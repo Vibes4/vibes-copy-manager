@@ -1,8 +1,7 @@
 /**
- * ClipboardHistory — manages the in-memory clipboard history.
- * Handles dedup, ordering, search, pinning, and persistence bridge.
+ * ClipboardHistory — in-memory clipboard history with pinning,
+ * image support, and efficient search over 1000+ items.
  */
-
 class ClipboardHistory {
   constructor(maxItems = 50) {
     this.items = [];
@@ -14,39 +13,78 @@ class ClipboardHistory {
     if (this.onChange) this.onChange(this.items);
   }
 
-  addItem(text) {
-    if (!text || !text.trim()) return;
+  _genId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
 
-    const existing = this.items.findIndex(i => i.text === text);
-    if (existing !== -1) {
-      const [item] = this.items.splice(existing, 1);
-      item.timestamp = Date.now();
-      this.items.unshift(item);
-    } else {
-      this.items.unshift({
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-        text,
-        timestamp: Date.now(),
-        pinned: false,
-      });
-    }
+  addItem(type, content) {
+    if (!content || (type === 'text' && !content.trim())) return;
 
-    if (this.items.length > this.maxItems) {
-      const unpinned = [...this.items].reverse().findIndex(i => !i.pinned);
-      if (unpinned !== -1) {
-        this.items.splice(this.items.length - 1 - unpinned, 1);
+    // Dedup: only for text items
+    if (type === 'text') {
+      const idx = this.items.findIndex(i => i.type === 'text' && i.content === content);
+      if (idx !== -1) {
+        const [item] = this.items.splice(idx, 1);
+        item.createdAt = Date.now();
+        this._insertSorted(item);
+        this._notify();
+        return;
       }
     }
 
+    const item = {
+      id: this._genId(),
+      type,
+      content,
+      pinned: false,
+      createdAt: Date.now(),
+    };
+
+    this._insertSorted(item);
+    this._trim();
     this._notify();
+  }
+
+  _insertSorted(item) {
+    if (item.pinned) {
+      const firstUnpinned = this.items.findIndex(i => !i.pinned);
+      if (firstUnpinned === -1) {
+        this.items.push(item);
+      } else {
+        this.items.splice(firstUnpinned, 0, item);
+      }
+    } else {
+      const firstUnpinned = this.items.findIndex(i => !i.pinned);
+      if (firstUnpinned === -1) {
+        this.items.push(item);
+      } else {
+        this.items.splice(firstUnpinned, 0, item);
+      }
+    }
+  }
+
+  _trim() {
+    while (this.items.length > this.maxItems) {
+      const idx = this._lastUnpinnedIndex();
+      if (idx === -1) break;
+      this.items.splice(idx, 1);
+    }
+  }
+
+  _lastUnpinnedIndex() {
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      if (!this.items[i].pinned) return i;
+    }
+    return -1;
   }
 
   togglePin(id) {
     const item = this.items.find(i => i.id === id);
-    if (item) {
-      item.pinned = !item.pinned;
-      this._notify();
-    }
+    if (!item) return;
+    item.pinned = !item.pinned;
+    this.items = this.items.filter(i => i.id !== id);
+    this._insertSorted(item);
+    this._notify();
   }
 
   removeItem(id) {
@@ -62,27 +100,29 @@ class ClipboardHistory {
   search(query) {
     if (!query || !query.trim()) return this.items;
     const q = query.toLowerCase();
-    return this.items.filter(i => i.text.toLowerCase().includes(q));
+    return this.items.filter(
+      i => i.type === 'text' && i.content.toLowerCase().includes(q)
+    );
   }
 
-  /** Restore from persistence data */
   load(entries) {
     if (!Array.isArray(entries)) return;
     this.items = entries.map(e => ({
-      id: e.id || Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-      text: e.text,
-      timestamp: e.timestamp || Date.now(),
+      id: e.id || this._genId(),
+      type: e.type || 'text',
+      content: e.content || e.text || '',
       pinned: !!e.pinned,
+      createdAt: e.createdAt || e.timestamp || Date.now(),
     }));
     this._notify();
   }
 
-  /** Serialize for persistence */
   serialize() {
     return this.items.map(i => ({
-      text: i.text,
-      timestamp: i.timestamp,
+      type: i.type,
+      content: i.content,
       pinned: i.pinned,
+      createdAt: i.createdAt,
     }));
   }
 }

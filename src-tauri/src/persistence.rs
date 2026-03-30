@@ -7,9 +7,12 @@ const HISTORY_FILE: &str = "clipboard_history.json";
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HistoryEntry {
-    pub text: String,
-    pub timestamp: u64,
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub content: String,
     pub pinned: bool,
+    #[serde(rename = "createdAt")]
+    pub created_at: u64,
 }
 
 fn history_path(app: &tauri::AppHandle) -> PathBuf {
@@ -20,7 +23,6 @@ fn history_path(app: &tauri::AppHandle) -> PathBuf {
     dir.join(HISTORY_FILE)
 }
 
-/// Load history from disk. Returns empty vec on any error.
 pub fn load(app: &tauri::AppHandle) -> Vec<HistoryEntry> {
     let path = history_path(app);
     match fs::read_to_string(&path) {
@@ -29,13 +31,12 @@ pub fn load(app: &tauri::AppHandle) -> Vec<HistoryEntry> {
     }
 }
 
-/// Save history to disk. Silently ignores errors.
 pub fn save(app: &tauri::AppHandle, entries: &[HistoryEntry]) {
     let path = history_path(app);
     if let Some(parent) = path.parent() {
         let _ = fs::create_dir_all(parent);
     }
-    if let Ok(json) = serde_json::to_string_pretty(entries) {
+    if let Ok(json) = serde_json::to_string(entries) {
         let _ = fs::write(&path, json);
     }
 }

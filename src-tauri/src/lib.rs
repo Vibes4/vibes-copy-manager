@@ -1,19 +1,34 @@
+pub mod autostart;
+pub mod config;
+pub mod engine;
+
+#[cfg(feature = "gui")]
 mod clipboard;
+#[cfg(feature = "gui")]
 mod persistence;
+#[cfg(feature = "gui")]
 pub mod window;
 
+#[cfg(feature = "gui")]
 use std::sync::{Arc, Mutex};
+#[cfg(feature = "gui")]
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager, WindowEvent,
+    Emitter, Manager, WindowEvent,
 };
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
+#[cfg(feature = "gui")]
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
+#[cfg(feature = "gui")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let last_text: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
-    let watcher_ref = Arc::clone(&last_text);
+    let last_img_hash: Arc<Mutex<u64>> = Arc::new(Mutex::new(0));
+    let watcher_text = Arc::clone(&last_text);
+    let watcher_img = Arc::clone(&last_img_hash);
+
+    let cfg = config::load();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -21,33 +36,63 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_opener::init())
         .manage(last_text)
+        .manage(last_img_hash)
         .invoke_handler(tauri::generate_handler![
             clipboard::write_clipboard,
+            clipboard::write_image_clipboard,
             window::hide_window,
             window::show_window,
             window::toggle_window,
             window::paste_and_hide,
             load_history,
             save_history,
+            get_config,
+            set_config,
+            get_autostart,
+            set_autostart,
         ])
         .setup(move |app| {
-            clipboard::start_watcher(app.handle().clone(), watcher_ref);
+            clipboard::start_watcher(app.handle().clone(), watcher_text, watcher_img);
 
-            // --- Global shortcut: Ctrl+Shift+V ---
-            let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyV);
-            let handle = app.handle().clone();
-            app.handle().plugin(
-                tauri_plugin_global_shortcut::Builder::new()
-                    .with_handler(move |_app, hotkey, event| {
-                        if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed
-                            && *hotkey == shortcut
-                        {
-                            let _ = window::do_toggle(&handle);
-                        }
-                    })
-                    .build(),
-            )?;
-            app.global_shortcut().register(shortcut)?;
+            if let Some(ref shortcut_str) = cfg.shortcut {
+                if let Ok((mods, code)) = config::parse_shortcut(shortcut_str) {
+                    let shortcut = Shortcut::new(Some(mods), code);
+                    let handle = app.handle().clone();
+
+                    app.handle().plugin(
+                        tauri_plugin_global_shortcut::Builder::new()
+                            .with_handler(move |_app, hotkey, event| {
+                                if event.state
+                                    == tauri_plugin_global_shortcut::ShortcutState::Pressed
+                                    && *hotkey == shortcut
+                                {
+                                    let _ = window::do_toggle(&handle);
+                                }
+                            })
+                            .build(),
+                    )?;
+                    app.global_shortcut().register(shortcut)?;
+                    eprintln!(
+                        "[clipboard-manager] Shortcut: {} | Max items: {}",
+                        shortcut_str, cfg.max_items
+                    );
+                } else {
+                    eprintln!(
+                        "[clipboard-manager] Invalid shortcut: {:?}, skipping registration",
+                        shortcut_str
+                    );
+                    app.handle().plugin(
+                        tauri_plugin_global_shortcut::Builder::new().build(),
+                    )?;
+                }
+            } else {
+                eprintln!(
+                    "[clipboard-manager] No shortcut configured. Use tray icon or vcm settings."
+                );
+                app.handle().plugin(
+                    tauri_plugin_global_shortcut::Builder::new().build(),
+                )?;
+            }
 
             // --- System tray ---
             let show_item = MenuItemBuilder::with_id("show", "Show").build(app)?;
@@ -62,7 +107,9 @@ pub fn run() {
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id().as_ref() {
-                    "show" => { let _ = window::do_show(app); }
+                    "show" => {
+                        let _ = window::do_show(app);
+                    }
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -78,26 +125,21 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            eprintln!("[clipboard-manager] Running in background.");
-            eprintln!("[clipboard-manager] Press Ctrl+Shift+V to toggle the window.");
-            eprintln!("[clipboard-manager] Or click the tray icon.");
-
-            // --- Intercept close → hide, and focus-lost → hide ---
             if let Some(win) = app.get_webview_window("main") {
                 let w = win.clone();
-                win.on_window_event(move |event| {
-                    match event {
-                        WindowEvent::CloseRequested { api, .. } => {
-                            api.prevent_close();
-                            let _ = w.hide();
-                            let _ = w.set_always_on_top(false);
-                        }
-                        WindowEvent::Focused(false) => {
-                            let _ = w.hide();
-                            let _ = w.set_always_on_top(false);
-                        }
-                        _ => {}
+                win.on_window_event(move |event| match event {
+                    WindowEvent::CloseRequested { api, .. } => {
+                        api.prevent_close();
+                        let _ = w.emit("window-hiding", ());
+                        let _ = w.hide();
+                        let _ = w.set_always_on_top(false);
                     }
+                    WindowEvent::Focused(false) => {
+                        let _ = w.emit("window-hiding", ());
+                        let _ = w.hide();
+                        let _ = w.set_always_on_top(false);
+                    }
+                    _ => {}
                 });
             }
 
@@ -107,12 +149,71 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+// ─── Tauri Commands ──────────────────────────────────────────────
+
+#[cfg(feature = "gui")]
 #[tauri::command]
 fn load_history(app: tauri::AppHandle) -> Vec<persistence::HistoryEntry> {
     persistence::load(&app)
 }
 
+#[cfg(feature = "gui")]
 #[tauri::command]
 fn save_history(app: tauri::AppHandle, entries: Vec<persistence::HistoryEntry>) {
     persistence::save(&app, &entries);
+}
+
+#[cfg(feature = "gui")]
+#[tauri::command]
+fn get_config() -> config::AppConfig {
+    config::load()
+}
+
+#[cfg(feature = "gui")]
+#[tauri::command]
+fn set_config(app: tauri::AppHandle, cfg: config::AppConfig) -> Result<(), String> {
+    if let Some(ref shortcut_str) = cfg.shortcut {
+        let (mods, code) = config::parse_shortcut(shortcut_str)?;
+        let new_shortcut = Shortcut::new(Some(mods), code);
+
+        let gs = app.global_shortcut();
+        gs.unregister_all().map_err(|e| e.to_string())?;
+        gs.on_shortcut(new_shortcut, move |app, _hotkey, event| {
+            if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                let _ = window::do_toggle(app);
+            }
+        })
+        .map_err(|e| e.to_string())?;
+    } else {
+        let gs = app.global_shortcut();
+        gs.unregister_all().map_err(|e| e.to_string())?;
+    }
+
+    if cfg.auto_start {
+        if let Ok(exe) = std::env::current_exe() {
+            let _ = autostart::enable(&exe.to_string_lossy());
+        }
+    } else {
+        let _ = autostart::disable();
+    }
+
+    config::save(&cfg);
+    Ok(())
+}
+
+#[cfg(feature = "gui")]
+#[tauri::command]
+fn get_autostart() -> bool {
+    autostart::is_enabled()
+}
+
+#[cfg(feature = "gui")]
+#[tauri::command]
+fn set_autostart(enabled: bool) -> Result<(), String> {
+    if enabled {
+        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        autostart::enable(&exe.to_string_lossy())
+    } else {
+        autostart::disable()
+    }
 }

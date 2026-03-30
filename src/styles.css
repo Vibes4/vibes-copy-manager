@@ -7,25 +7,22 @@
 html, body {
   height: 100%;
   overflow: hidden;
+  background: transparent;
 }
 
 body {
   font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.06);
 }
 
-/* Draggable title bar region */
-.drag-region {
-  -webkit-app-region: drag;
-}
-.no-drag {
-  -webkit-app-region: no-drag;
-}
+/* ─── Drag: disabled for now (causes focus-loss on Linux) */
 
-/* Scrollable area */
+/* ─── Scrollbar ──────────────────────────────────────── */
+
+.scroll-area {
+  scroll-behavior: smooth;
+}
 .scroll-area::-webkit-scrollbar {
   width: 4px;
 }
@@ -40,7 +37,8 @@ body {
   background: rgba(255,255,255,0.15);
 }
 
-/* Text clamping for previews */
+/* ─── Text clamping ──────────────────────────────────── */
+
 .line-clamp {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -48,7 +46,8 @@ body {
   overflow: hidden;
 }
 
-/* Keyboard shortcut badges */
+/* ─── Keyboard badges ────────────────────────────────── */
+
 .kbd {
   display: inline-block;
   padding: 0px 4px;
@@ -61,7 +60,32 @@ body {
   vertical-align: middle;
 }
 
-/* Smooth selected-item transitions */
+/* ─── List item transitions ──────────────────────────── */
+
 .clip-item {
-  transition: background-color 80ms ease, border-color 80ms ease;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+
+/* ─── Window popup animation ─────────────────────────── */
+
+#app {
+  opacity: 0;
+  transform: scale(0.96) translateY(4px);
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+  will-change: opacity, transform;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow:
+    0 8px 30px rgba(0,0,0,0.5),
+    0 2px 8px rgba(0,0,0,0.3);
+}
+
+#app.app-visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+#app.app-hiding {
+  opacity: 0;
+  transform: scale(0.96) translateY(4px);
+  transition: opacity 100ms ease-in, transform 100ms ease-in;
 }
