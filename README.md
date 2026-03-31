@@ -23,7 +23,7 @@ A fast, cross-platform clipboard manager with a GUI popup and CLI tool. Built wi
 ### One-line install (CLI)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/vaibhav/vibes-copy-manager/main/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/vibes4/vibes-copy-manager/main/install.sh | sh
 ```
 
 This installs the `vcm` CLI binary to `~/.local/bin/`.
@@ -34,10 +34,10 @@ Download the latest release for your platform:
 
 | Platform | Package | Link |
 |----------|---------|------|
-| Linux | `.AppImage` | [Download](https://github.com/vaibhav/vibes-copy-manager/releases/latest) |
-| Linux | `.deb` | [Download](https://github.com/vaibhav/vibes-copy-manager/releases/latest) |
-| macOS | `.dmg` | [Download](https://github.com/vaibhav/vibes-copy-manager/releases/latest) |
-| Windows | `.msi` | [Download](https://github.com/vaibhav/vibes-copy-manager/releases/latest) |
+| Linux | `.AppImage` | [Download](https://github.com/vibes4/vibes-copy-manager/releases/latest) |
+| Linux | `.deb` | [Download](https://github.com/vibes4/vibes-copy-manager/releases/latest) |
+| macOS | `.dmg` | [Download](https://github.com/vibes4/vibes-copy-manager/releases/latest) |
+| Windows | `.msi` | [Download](https://github.com/vibes4/vibes-copy-manager/releases/latest) |
 
 See [INSTALLATION.md](INSTALLATION.md) for detailed OS-specific instructions.
 
@@ -225,7 +225,7 @@ The `gui` feature flag controls Tauri-dependent code. The CLI compiles with `--n
 
 ## Releases
 
-[View all releases](https://github.com/vaibhav/vibes-copy-manager/releases)
+[View all releases](https://github.com/vibes4/vibes-copy-manager/releases)
 
 ---
 

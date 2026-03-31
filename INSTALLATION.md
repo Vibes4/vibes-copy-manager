@@ -3,7 +3,7 @@
 ## Quick Install (CLI)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/vaibhav/vibes-copy-manager/main/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/vibes4/vibes-copy-manager/master/install.sh | sh
 ```
 
 This installs the `vcm` CLI binary to `~/.local/bin/`. If a pre-built binary isn't available for your platform, it builds from source (requires Rust).
@@ -20,7 +20,7 @@ vcm --help
 
 ### AppImage (recommended)
 
-1. Download the `.AppImage` from [Releases](https://github.com/vaibhav/vibes-copy-manager/releases/latest)
+1. Download the `.AppImage` from [Releases](https://github.com/vibes4/vibes-copy-manager/releases/latest)
 
 2. Make it executable and run:
 
@@ -85,7 +85,7 @@ If your desktop environment captures the shortcut before the app:
 
 ### DMG
 
-1. Download the `.dmg` from [Releases](https://github.com/vaibhav/vibes-copy-manager/releases/latest)
+1. Download the `.dmg` from [Releases](https://github.com/vibes4/vibes-copy-manager/releases/latest)
 2. Open the `.dmg` and drag the app to **Applications**
 3. First launch: right-click the app and select **Open** (bypasses Gatekeeper on unsigned builds)
 
@@ -112,7 +112,7 @@ cp target/release/vcm ~/.local/bin/
 
 ### MSI Installer
 
-1. Download the `.msi` from [Releases](https://github.com/vaibhav/vibes-copy-manager/releases/latest)
+1. Download the `.msi` from [Releases](https://github.com/vibes4/vibes-copy-manager/releases/latest)
 2. Double-click to run the installer
 3. If Windows SmartScreen appears, click **More info** → **Run anyway**
 4. Launch from the Start Menu
