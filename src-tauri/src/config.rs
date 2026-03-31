@@ -17,18 +17,10 @@ pub struct AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            shortcut: Some(default_shortcut().into()),
+            shortcut: None,
             max_items: 50,
             auto_start: false,
         }
-    }
-}
-
-pub fn default_shortcut() -> &'static str {
-    if cfg!(target_os = "macos") {
-        "Cmd+Shift+V"
-    } else {
-        "Ctrl+Shift+V"
     }
 }
 
@@ -39,10 +31,20 @@ pub fn config_path() -> PathBuf {
         .join(CONFIG_FILE)
 }
 
+pub fn exists() -> bool {
+    config_path().exists()
+}
+
 pub fn load() -> AppConfig {
     let path = config_path();
     match fs::read_to_string(&path) {
-        Ok(data) => serde_json::from_str(&data).unwrap_or_default(),
+        Ok(data) => match serde_json::from_str(&data) {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                log::warn!("Malformed config at {}: {e}, using defaults", path.display());
+                AppConfig::default()
+            }
+        },
         Err(_) => {
             let cfg = AppConfig::default();
             save(&cfg);
@@ -54,10 +56,20 @@ pub fn load() -> AppConfig {
 pub fn save(cfg: &AppConfig) {
     let path = config_path();
     if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
+        if let Err(e) = fs::create_dir_all(parent) {
+            log::error!("Could not create config dir {}: {e}", parent.display());
+            return;
+        }
     }
-    if let Ok(json) = serde_json::to_string_pretty(cfg) {
-        let _ = fs::write(&path, json);
+    match serde_json::to_string_pretty(cfg) {
+        Ok(json) => {
+            if let Err(e) = fs::write(&path, json) {
+                log::error!("Could not write config to {}: {e}", path.display());
+            }
+        }
+        Err(e) => {
+            log::error!("Could not serialize config: {e}");
+        }
     }
 }
 
@@ -139,7 +151,7 @@ pub fn validate_shortcut(s: &str) -> Result<(), String> {
             }
             k => {
                 let upper = k.to_uppercase();
-                let valid = upper.len() == 1 && upper.chars().next().map_or(false, |c| c.is_alphanumeric())
+                let valid = upper.len() == 1 && upper.chars().next().is_some_and(|c| c.is_alphanumeric())
                     || matches!(upper.as_str(),
                         "SPACE" | "TAB" | "BACKQUOTE" |
                         "F1" | "F2" | "F3" | "F4" | "F5" | "F6" |

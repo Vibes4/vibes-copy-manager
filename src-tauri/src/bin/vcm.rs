@@ -5,7 +5,7 @@ use vibes_copy_manager_lib::{autostart, config, engine};
 #[command(name = "vcm", version, about = "Vibes Copy Manager — clipboard manager CLI")]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -67,15 +67,72 @@ enum SettingsAction {
 }
 
 fn main() {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn"))
+        .format_timestamp(None)
+        .init();
+
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Push { text } => cmd_push(&text),
-        Commands::Pop { index } => cmd_pop(index),
-        Commands::List { limit } => cmd_list(limit),
-        Commands::Clear { index } => cmd_clear(index),
-        Commands::Settings { action } => cmd_settings(action),
+        None => cmd_open_gui(),
+        Some(Commands::Push { text }) => cmd_push(&text),
+        Some(Commands::Pop { index }) => cmd_pop(index),
+        Some(Commands::List { limit }) => cmd_list(limit),
+        Some(Commands::Clear { index }) => cmd_clear(index),
+        Some(Commands::Settings { action }) => cmd_settings(action),
     }
+}
+
+fn cmd_open_gui() {
+    let exe = std::env::current_exe().ok();
+    let exe_dir = exe.as_ref().and_then(|p| p.parent());
+
+    let gui_names: &[&str] = if cfg!(target_os = "windows") {
+        &["vibes-copy-manager.exe", "clipboard-manager.exe"]
+    } else {
+        &["vibes-copy-manager", "clipboard-manager"]
+    };
+
+    let mut search_dirs: Vec<std::path::PathBuf> = Vec::new();
+    if let Some(dir) = exe_dir {
+        search_dirs.push(dir.to_path_buf());
+    }
+    if let Ok(path) = std::env::var("PATH") {
+        for p in std::env::split_paths(&path) {
+            search_dirs.push(p);
+        }
+    }
+
+    for dir in &search_dirs {
+        for name in gui_names {
+            let candidate = dir.join(name);
+            if candidate.is_file() {
+                let status = std::process::Command::new(&candidate)
+                    .stdin(std::process::Stdio::null())
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .spawn();
+
+                match status {
+                    Ok(_) => {
+                        println!("Launched GUI: {}", candidate.display());
+                        return;
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to launch {}: {e}", candidate.display());
+                    }
+                }
+            }
+        }
+    }
+
+    eprintln!("Could not find the GUI binary (vibes-copy-manager).");
+    eprintln!("Make sure the GUI is installed, or use CLI commands:");
+    eprintln!("  vcm push \"text\"");
+    eprintln!("  vcm pop");
+    eprintln!("  vcm list");
+    eprintln!("  vcm settings");
+    std::process::exit(1);
 }
 
 fn cmd_push(text: &str) {
@@ -98,7 +155,10 @@ fn cmd_pop(index: Option<usize>) {
                 }
                 print!("{}", entry.content);
             } else {
-                eprintln!("Item at index {} is an image (cannot output to terminal).", index.unwrap_or(0));
+                eprintln!(
+                    "Item at index {} is an image (cannot output to terminal).",
+                    index.unwrap_or(0)
+                );
                 std::process::exit(1);
             }
         }
@@ -218,12 +278,10 @@ fn cmd_settings(action: Option<SettingsAction>) {
                     }
                     Err(e) => eprintln!("warning: could not determine exe path: {e}"),
                 }
+            } else if let Err(e) = autostart::disable() {
+                eprintln!("warning: could not disable autostart: {e}");
             } else {
-                if let Err(e) = autostart::disable() {
-                    eprintln!("warning: could not disable autostart: {e}");
-                } else {
-                    println!("Autostart disabled.");
-                }
+                println!("Autostart disabled.");
             }
         }
     }

@@ -28,9 +28,11 @@ pub fn run() {
     let watcher_text = Arc::clone(&last_text);
     let watcher_img = Arc::clone(&last_img_hash);
 
+    let first_run = !config::exists();
     let cfg = config::load();
+    let needs_setup = cfg.shortcut.is_none();
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             let _ = window::do_show(app);
         }))
@@ -55,46 +57,44 @@ pub fn run() {
             clipboard::start_watcher(app.handle().clone(), watcher_text, watcher_img);
 
             if let Some(ref shortcut_str) = cfg.shortcut {
-                if let Ok((mods, code)) = config::parse_shortcut(shortcut_str) {
-                    let shortcut = Shortcut::new(Some(mods), code);
-                    let handle = app.handle().clone();
+                match config::parse_shortcut(shortcut_str) {
+                    Ok((mods, code)) => {
+                        let shortcut = Shortcut::new(Some(mods), code);
+                        let handle = app.handle().clone();
 
-                    app.handle().plugin(
-                        tauri_plugin_global_shortcut::Builder::new()
-                            .with_handler(move |_app, hotkey, event| {
-                                if event.state
-                                    == tauri_plugin_global_shortcut::ShortcutState::Pressed
-                                    && *hotkey == shortcut
-                                {
-                                    let _ = window::do_toggle(&handle);
-                                }
-                            })
-                            .build(),
-                    )?;
-                    app.global_shortcut().register(shortcut)?;
-                    eprintln!(
-                        "[clipboard-manager] Shortcut: {} | Max items: {}",
-                        shortcut_str, cfg.max_items
-                    );
-                } else {
-                    eprintln!(
-                        "[clipboard-manager] Invalid shortcut: {:?}, skipping registration",
-                        shortcut_str
-                    );
-                    app.handle().plugin(
-                        tauri_plugin_global_shortcut::Builder::new().build(),
-                    )?;
+                        app.handle().plugin(
+                            tauri_plugin_global_shortcut::Builder::new()
+                                .with_handler(move |_app, hotkey, event| {
+                                    if event.state
+                                        == tauri_plugin_global_shortcut::ShortcutState::Pressed
+                                        && *hotkey == shortcut
+                                    {
+                                        let _ = window::do_toggle(&handle);
+                                    }
+                                })
+                                .build(),
+                        )?;
+                        app.global_shortcut().register(shortcut)?;
+                        log::info!(
+                            "Shortcut: {} | Max items: {}",
+                            shortcut_str,
+                            cfg.max_items
+                        );
+                    }
+                    Err(e) => {
+                        log::warn!("Invalid shortcut {:?}: {}, skipping registration", shortcut_str, e);
+                        app.handle().plugin(
+                            tauri_plugin_global_shortcut::Builder::new().build(),
+                        )?;
+                    }
                 }
             } else {
-                eprintln!(
-                    "[clipboard-manager] No shortcut configured. Use tray icon or vcm settings."
-                );
+                log::info!("No shortcut configured. Use tray icon or vcm settings.");
                 app.handle().plugin(
                     tauri_plugin_global_shortcut::Builder::new().build(),
                 )?;
             }
 
-            // --- System tray ---
             let show_item = MenuItemBuilder::with_id("show", "Show").build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
             let menu = MenuBuilder::new(app)
@@ -103,7 +103,7 @@ pub fn run() {
 
             TrayIconBuilder::new()
                 .icon(app.default_window_icon().cloned().unwrap())
-                .tooltip("Clipboard Manager")
+                .tooltip("Vibes Copy Manager")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id().as_ref() {
@@ -143,10 +143,22 @@ pub fn run() {
                 });
             }
 
+            if first_run || needs_setup {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(300));
+                    let _ = window::do_show(&handle);
+                    let _ = handle.emit("open-settings", ());
+                });
+            }
+
             Ok(())
-        })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        });
+
+    if let Err(e) = builder.run(tauri::generate_context!()) {
+        log::error!("Application exited with error: {e}");
+        std::process::exit(1);
+    }
 }
 
 // ─── Tauri Commands ──────────────────────────────────────────────

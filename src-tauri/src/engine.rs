@@ -36,7 +36,13 @@ fn history_path() -> PathBuf {
 pub fn load_history() -> Vec<HistoryEntry> {
     let path = history_path();
     match fs::read_to_string(&path) {
-        Ok(data) => serde_json::from_str(&data).unwrap_or_default(),
+        Ok(data) => match serde_json::from_str(&data) {
+            Ok(entries) => entries,
+            Err(e) => {
+                log::warn!("Malformed history at {}: {e}", path.display());
+                Vec::new()
+            }
+        },
         Err(_) => Vec::new(),
     }
 }
@@ -44,10 +50,20 @@ pub fn load_history() -> Vec<HistoryEntry> {
 pub fn save_history(entries: &[HistoryEntry]) {
     let path = history_path();
     if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
+        if let Err(e) = fs::create_dir_all(parent) {
+            log::error!("Could not create data dir {}: {e}", parent.display());
+            return;
+        }
     }
-    if let Ok(json) = serde_json::to_string_pretty(entries) {
-        let _ = fs::write(&path, json);
+    match serde_json::to_string_pretty(entries) {
+        Ok(json) => {
+            if let Err(e) = fs::write(&path, json) {
+                log::error!("Could not write history to {}: {e}", path.display());
+            }
+        }
+        Err(e) => {
+            log::error!("Could not serialize history: {e}");
+        }
     }
 }
 

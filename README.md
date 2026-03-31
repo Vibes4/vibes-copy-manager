@@ -1,98 +1,77 @@
 # Vibes Copy Manager (vcm)
 
-A fast, modern clipboard manager for Linux, Windows, and macOS. Built with Tauri, Rust, and Vanilla JS. Includes both a **GUI popup** and a **CLI tool** (`vcm`).
+A fast, cross-platform clipboard manager with a GUI popup and CLI tool. Built with Tauri, Rust, and Vanilla JS.
 
 ## Features
 
 - **Clipboard history** — automatically captures text and images
-- **CLI tool (`vcm`)** — push, pop, list, clear from the terminal
-- **Instant search** — filter 1000+ items with debounced substring matching
-- **Pin items** — keep important clips at the top, safe from history trimming
-- **Image support** — previews clipboard images as thumbnails
-- **Configurable shortcut** — change the global hotkey from UI or CLI (or disable it)
-- **Auto-paste** — selecting an item writes it to clipboard and simulates Ctrl+V
-- **Start on login** — optional autostart on system boot
+- **Instant search** — filter thousands of items with debounced matching
+- **Pin items** — keep important clips at the top, safe from trimming
+- **Image preview** — clipboard images shown as thumbnails
+- **Configurable shortcut** — set any global hotkey from UI or CLI
+- **CLI support** — push, pop, list, clear, and configure from the terminal
+- **Cross-platform** — Linux (X11 + Wayland), macOS, and Windows
+- **Auto-paste** — selecting an item writes to clipboard and simulates paste
 - **System tray** — runs in the background with a tray icon
 - **Single instance** — launching again shows the existing window
-- **Dark theme** — clean, compact popup UI
-- **Shared data** — CLI and GUI read/write the same clipboard history
+- **Autostart** — optional start on system login
 
-## Quick Install (CLI only)
+---
+
+## Installation
+
+### One-line install (CLI)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/vaibhav/vibes-copy-manager/main/install.sh | sh
 ```
 
-Verify:
+This installs the `vcm` CLI binary to `~/.local/bin/`.
+
+### Manual install (GUI + CLI)
+
+Download the latest release for your platform:
+
+| Platform | Package | Link |
+|----------|---------|------|
+| Linux | `.AppImage` | [Download](https://github.com/vaibhav/vibes-copy-manager/releases/latest) |
+| Linux | `.deb` | [Download](https://github.com/vaibhav/vibes-copy-manager/releases/latest) |
+| macOS | `.dmg` | [Download](https://github.com/vaibhav/vibes-copy-manager/releases/latest) |
+| Windows | `.msi` | [Download](https://github.com/vaibhav/vibes-copy-manager/releases/latest) |
+
+See [INSTALLATION.md](INSTALLATION.md) for detailed OS-specific instructions.
+
+---
+
+## Usage
+
+Launch the GUI (if installed):
 
 ```bash
-vcm --help
+vcm
 ```
 
-## CLI Usage
-
-### Push text to clipboard
+### CLI Commands
 
 ```bash
-vcm push "Hello, world!"
+vcm push "Hello, world!"       # Add text to history + system clipboard
+vcm pop                         # Copy latest item to clipboard, print it
+vcm pop 3                       # Copy item at index 3
+vcm list                        # List clipboard history
+vcm list --limit 50             # List up to 50 items
+vcm clear                       # Clear all (keeps pinned)
+vcm clear 2                     # Remove item at index 2
+vcm settings                    # Show current config
+vcm settings shortcut "Ctrl+Shift+V"   # Set shortcut
+vcm settings shortcut none      # Disable shortcut
+vcm settings max-items 100      # Set max history items
+vcm settings autostart on       # Enable autostart
+vcm settings autostart off      # Disable autostart
 ```
 
-Adds text to history and copies it to the system clipboard.
+### GUI
 
-### Pop (retrieve) latest item
-
-```bash
-vcm pop
-```
-
-Copies the latest item to the system clipboard and outputs it.
-
-### Pop by index
-
-```bash
-vcm pop 3
-```
-
-### List clipboard history
-
-```bash
-vcm list
-vcm list --limit 50
-```
-
-### Clear history
-
-```bash
-vcm clear          # Clear all (keeps pinned)
-vcm clear 2        # Remove item at index 2
-```
-
-### Settings
-
-```bash
-vcm settings                              # Show current config
-vcm settings show                         # Same as above
-vcm settings shortcut "Ctrl+Shift+V"     # Set shortcut
-vcm settings shortcut none                # Disable shortcut
-vcm settings max-items 100                # Set max history
-vcm settings autostart on                 # Enable autostart
-vcm settings autostart off                # Disable autostart
-```
-
-## GUI Usage
-
-### Opening the App
-
-Press the global shortcut (default: **Ctrl+Shift+V** on Linux/Windows, **Cmd+Shift+V** on macOS).
-
-The popup appears near your cursor. It hides when you:
-- Press **Esc**
-- Click outside the window
-- Select an item
-
-You can also click the **system tray icon** to toggle the window.
-
-### Keyboard Shortcuts
+Press your configured shortcut or click the system tray icon to open the popup.
 
 | Key | Action |
 |-----|--------|
@@ -102,23 +81,37 @@ You can also click the **system tray icon** to toggle the window.
 | **Ctrl+P** | Toggle pin on selected item |
 | **Delete** | Remove selected item |
 
-### Settings
+---
 
-Click the gear icon in the header to open settings:
+## Shortcut Setup
 
-- **Global Shortcut** — set any Ctrl/Shift/Alt/Super + key combination, or leave empty to disable
-- **Max History Items** — how many items to keep (10-5000)
-- **Start on system login** — toggle autostart
+The app ships with **no default shortcut**. On first launch, the Settings panel opens so you can configure one.
+
+You can set it via CLI or the GUI Settings panel:
+
+```bash
+vcm settings shortcut "Ctrl+Shift+V"
+```
+
+**Recommended shortcuts by platform:**
+
+| Platform | Shortcut | Notes |
+|----------|----------|-------|
+| Linux | `Super+V` or `Ctrl+Shift+V` | Set via OS keyboard settings or vcm |
+| macOS | `Cmd+Shift+V` | Set via vcm settings |
+| Windows | `Ctrl+Shift+V` | Set via vcm settings |
+
+Leave the shortcut empty to disable it entirely — use the tray icon or `vcm` CLI instead.
+
+---
 
 ## Configuration
 
-Settings are stored in:
+Settings are stored at:
 
 ```
 ~/.config/vibes-copy-manager/config.json
 ```
-
-Example:
 
 ```json
 {
@@ -128,15 +121,17 @@ Example:
 }
 ```
 
-Set `shortcut` to `null` to disable the global shortcut (use tray icon or `vcm` CLI instead).
+Set `shortcut` to `null` to disable the global shortcut.
 
-Clipboard history is stored in:
+Clipboard history is stored at:
 
 ```
 ~/.local/share/vibes-copy-manager/clipboard_history.json
 ```
 
 Both the CLI and GUI share the same history file.
+
+---
 
 ## Development
 
@@ -145,25 +140,21 @@ Both the CLI and GUI share the same history file.
 - [Rust](https://rustup.rs/) (stable)
 - [Node.js](https://nodejs.org/) (for Tauri CLI)
 - Tauri CLI: `cargo install tauri-cli --version "^2"`
-- **Linux only**: `xdotool` (X11) or `wtype` (Wayland) for auto-paste
-- **Linux only**: `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libappindicator3-dev`
+- **Linux**: `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libappindicator3-dev`, `xdotool`
+- **Linux (Wayland)**: `wtype`
 
-### Run GUI in Development
+### Run in development
 
 ```bash
 cargo tauri dev
 ```
 
-The window starts hidden. Press your configured shortcut to open it, or click the system tray icon.
-
-### Build CLI Only (no Tauri/GUI dependencies)
+### Build CLI only (no GUI dependencies)
 
 ```bash
 cd src-tauri
 cargo build --release --bin vcm --no-default-features
 ```
-
-The binary is at `target/release/vcm`.
 
 ### Build GUI
 
@@ -171,77 +162,72 @@ The binary is at `target/release/vcm`.
 cargo tauri build
 ```
 
-### Build Both
-
-```bash
-# GUI (includes all Tauri features)
-cargo tauri build
-
-# CLI (standalone, no GUI deps)
-cd src-tauri
-cargo build --release --bin vcm --no-default-features
-```
-
-Output binaries:
+Output:
 
 | Binary | Location |
 |--------|----------|
 | GUI | `src-tauri/target/release/bundle/` (.deb, .AppImage, .msi, .dmg) |
-| CLI (`vcm`) | `src-tauri/target/release/vcm` |
+| CLI | `src-tauri/target/release/vcm` |
+
+---
 
 ## Architecture
 
 ```
-src/                        # Frontend (Vanilla JS + Tailwind)
-├── index.html              # Main UI
-├── app.js                  # UI logic, events, settings
-├── clipboard.js            # In-memory history management
-└── styles.css              # Custom CSS + animations
+src/                        Frontend (Vanilla JS + Tailwind)
+├── index.html              Main UI
+├── app.js                  UI logic, events, settings
+├── clipboard.js            In-memory history management
+└── styles.css              Custom CSS + animations
 
-src-tauri/src/              # Rust backend
-├── main.rs                 # GUI entry point
-├── bin/vcm.rs              # CLI entry point (vcm binary)
-├── lib.rs                  # Tauri setup, commands, tray, shortcuts
-├── engine.rs               # Shared clipboard engine (history CRUD)
-├── clipboard.rs            # Clipboard watcher (GUI, polling + images)
-├── window.rs               # Window positioning, show/hide, paste
-├── config.rs               # Config read/write + shortcut parsing
-├── persistence.rs          # Tauri-specific history persistence
-├── autostart.rs            # Cross-platform autostart management
-└── build.rs                # Build script (conditional Tauri build)
+src-tauri/src/              Rust backend
+├── main.rs                 GUI entry point
+├── bin/vcm.rs              CLI entry point
+├── lib.rs                  Tauri setup, commands, tray, shortcuts
+├── engine.rs               Shared clipboard engine (history CRUD)
+├── clipboard.rs            Clipboard watcher (polling + images)
+├── window.rs               Window positioning, show/hide, paste
+├── config.rs               Config read/write + shortcut parsing
+├── persistence.rs          Tauri-specific history persistence
+└── autostart.rs            Cross-platform autostart management
 ```
 
-### Shared vs GUI-only modules
-
-| Module | Used by CLI | Used by GUI |
-|--------|:-----------:|:-----------:|
+| Module | CLI | GUI |
+|--------|:---:|:---:|
 | `engine.rs` | Yes | Yes |
 | `config.rs` | Yes | Yes |
 | `autostart.rs` | Yes | Yes |
-| `clipboard.rs` | - | Yes |
-| `window.rs` | - | Yes |
-| `persistence.rs` | - | Yes |
+| `clipboard.rs` | — | Yes |
+| `window.rs` | — | Yes |
+| `persistence.rs` | — | Yes |
 
-The `gui` feature flag controls Tauri-dependent code. The CLI binary uses `--no-default-features` to compile without Tauri.
+The `gui` feature flag controls Tauri-dependent code. The CLI compiles with `--no-default-features`.
+
+---
 
 ## Platform Notes
 
 ### Linux
-
 - **X11**: Uses `xdotool` for window focus and paste simulation
 - **Wayland**: Falls back to `wtype` for paste simulation
-- Autostart creates `~/.config/autostart/vibes-copy-manager.desktop`
+- Autostart: `~/.config/autostart/vibes-copy-manager.desktop`
 
 ### macOS
-
-- Uses `osascript` for paste simulation (System Events keystroke)
-- Autostart creates a LaunchAgent plist
-- Default shortcut uses **Cmd** instead of Ctrl
+- Uses `osascript` for paste simulation
+- Autostart: `~/Library/LaunchAgents/com.vibes.vibes-copy-manager.plist`
+- Requires Accessibility permission for auto-paste
 
 ### Windows
+- Clipboard write is sufficient — user pastes with Ctrl+V
+- Autostart: `.bat` in the Startup folder
 
-- Clipboard write is sufficient — user pastes with their normal Ctrl+V
-- Autostart creates a `.bat` in the Startup folder
+---
+
+## Releases
+
+[View all releases](https://github.com/vaibhav/vibes-copy-manager/releases)
+
+---
 
 ## License
 

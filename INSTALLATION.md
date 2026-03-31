@@ -1,12 +1,12 @@
 # Installation Guide
 
-## One-Line Install (CLI only)
+## Quick Install (CLI)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/vaibhav/vibes-copy-manager/main/install.sh | sh
 ```
 
-This installs the `vcm` CLI binary to `~/.local/bin/`. If the binary isn't found for your platform, it will build from source (requires Rust).
+This installs the `vcm` CLI binary to `~/.local/bin/`. If a pre-built binary isn't available for your platform, it builds from source (requires Rust).
 
 Verify:
 
@@ -16,17 +16,127 @@ vcm --help
 
 ---
 
+## Linux
+
+### AppImage (recommended)
+
+1. Download the `.AppImage` from [Releases](https://github.com/vaibhav/vibes-copy-manager/releases/latest)
+
+2. Make it executable and run:
+
+```bash
+chmod +x vibes-copy-manager_*.AppImage
+./vibes-copy-manager_*.AppImage
+```
+
+3. (Optional) Move to a standard location:
+
+```bash
+mkdir -p ~/.local/bin
+mv vibes-copy-manager_*.AppImage ~/.local/bin/vibes-copy-manager
+```
+
+### .deb Package (Debian/Ubuntu)
+
+```bash
+sudo dpkg -i vibes-copy-manager_*.deb
+```
+
+### System Dependencies
+
+For auto-paste to work, install the appropriate tool:
+
+**X11:**
+
+```bash
+sudo apt install -y xdotool
+```
+
+**Wayland:**
+
+```bash
+sudo apt install -y wtype
+```
+
+### Building the GUI from Source
+
+```bash
+sudo apt install -y \
+  libwebkit2gtk-4.1-dev \
+  libgtk-3-dev \
+  libappindicator3-dev \
+  librsvg2-dev \
+  xdotool
+
+cargo install tauri-cli --version "^2"
+cargo tauri build
+```
+
+### Shortcut Conflicts
+
+If your desktop environment captures the shortcut before the app:
+
+1. Remove or change the conflicting shortcut in your DE settings, or
+2. Change the app shortcut: `vcm settings shortcut "Alt+V"`
+
+---
+
+## macOS
+
+### DMG
+
+1. Download the `.dmg` from [Releases](https://github.com/vaibhav/vibes-copy-manager/releases/latest)
+2. Open the `.dmg` and drag the app to **Applications**
+3. First launch: right-click the app and select **Open** (bypasses Gatekeeper on unsigned builds)
+
+### Permissions
+
+macOS requires Accessibility permission for auto-paste (via `osascript`):
+
+1. Open **System Settings** → **Privacy & Security** → **Accessibility**
+2. Add **Vibes Copy Manager** to the allowed list
+
+### CLI on macOS
+
+The `curl | sh` installer works on macOS. Alternatively, after installing the `.dmg`, the CLI binary can be built separately:
+
+```bash
+cd src-tauri
+cargo build --release --bin vcm --no-default-features
+cp target/release/vcm ~/.local/bin/
+```
+
+---
+
+## Windows
+
+### MSI Installer
+
+1. Download the `.msi` from [Releases](https://github.com/vaibhav/vibes-copy-manager/releases/latest)
+2. Double-click to run the installer
+3. If Windows SmartScreen appears, click **More info** → **Run anyway**
+4. Launch from the Start Menu
+
+### CLI on Windows
+
+Copy `vcm.exe` to a folder in your PATH, or add its location to PATH via System Settings.
+
+The `curl | sh` installer does not support Windows. Use the `.msi` installer instead.
+
+---
+
 ## Building from Source
 
-### Prerequisites
-
-All platforms require Rust:
+### Prerequisites (all platforms)
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+cargo install tauri-cli --version "^2"
 ```
 
-### Build CLI Only (no GUI dependencies)
+### Build CLI Only
+
+No GUI dependencies required:
 
 ```bash
 cd src-tauri
@@ -35,161 +145,50 @@ cargo build --release --bin vcm --no-default-features
 
 Binary: `src-tauri/target/release/vcm`
 
-Install it:
-
-```bash
-cp src-tauri/target/release/vcm ~/.local/bin/
-```
-
 ### Build GUI
 
-Requires Tauri CLI:
-
 ```bash
-cargo install tauri-cli --version "^2"
 cargo tauri build
 ```
 
-Binaries are output to `src-tauri/target/release/bundle/`.
+Output in `src-tauri/target/release/bundle/`:
+
+| Platform | Formats |
+|----------|---------|
+| Linux | `.deb`, `.AppImage` |
+| macOS | `.dmg` |
+| Windows | `.msi` |
 
 ---
 
-## Linux
+## Post-Install Configuration
 
-### GUI Dependencies
-
-Install system dependencies (Ubuntu/Debian):
+### Set a shortcut
 
 ```bash
-sudo apt update
-sudo apt install -y \
-  libwebkit2gtk-4.1-dev \
-  libgtk-3-dev \
-  libappindicator3-dev \
-  librsvg2-dev \
-  xdotool
-```
-
-For Wayland, also install:
-
-```bash
-sudo apt install -y wtype
-```
-
-### AppImage
-
-```bash
-chmod +x vibes-copy-manager_*.AppImage
-./vibes-copy-manager_*.AppImage
-```
-
-Optional — move to a standard location:
-
-```bash
-mkdir -p ~/.local/bin
-mv vibes-copy-manager_*.AppImage ~/.local/bin/vibes-copy-manager
-```
-
-### .deb Package
-
-```bash
-sudo dpkg -i vibes-copy-manager_*.deb
-```
-
-### Setting Up the Global Shortcut
-
-The app registers its own global shortcut. If your desktop environment captures that key first:
-
-1. Remove or change the conflicting shortcut in your DE settings, or
-2. Change the app shortcut via GUI Settings or `vcm settings shortcut "Alt+V"`
-
----
-
-## Windows
-
-### MSI Installer
-
-1. Double-click `vibes-copy-manager_*.msi`
-2. Follow the installation wizard
-3. Launch from Start Menu
-
-### Portable EXE
-
-Copy `vibes-copy-manager.exe` and run it directly.
-
-### CLI on Windows
-
-Copy `vcm.exe` to a folder in your PATH, or add its location to PATH.
-
----
-
-## macOS
-
-### DMG
-
-1. Double-click `vibes-copy-manager_*.dmg`
-2. Drag the app to **Applications**
-3. First launch: right-click -> **Open** (to bypass Gatekeeper)
-
-### Notes
-
-- macOS may ask for Accessibility permissions (needed for paste via `osascript`)
-- Grant permission in **System Settings -> Privacy & Security -> Accessibility**
-- Default shortcut: **Cmd+Shift+V**
-
----
-
-## Post-Install
-
-### Configure via CLI
-
-```bash
-# View current settings
-vcm settings
-
-# Set shortcut
 vcm settings shortcut "Ctrl+Shift+V"
-
-# Disable shortcut (use tray icon only)
-vcm settings shortcut none
-
-# Set max history items
-vcm settings max-items 100
-
-# Enable autostart
-vcm settings autostart on
 ```
 
-### Configure via GUI
+Or open the GUI → Settings (gear icon) → set your shortcut → Save.
 
-Open the app -> Settings (gear icon) -> adjust settings -> Save.
-
-### Enable Autostart
+### Enable autostart
 
 ```bash
 vcm settings autostart on
 ```
 
-Or toggle in GUI Settings.
-
-This creates a platform-appropriate autostart entry:
-
-| Platform | Location |
-|----------|----------|
+| Platform | Autostart location |
+|----------|--------------------|
 | Linux | `~/.config/autostart/vibes-copy-manager.desktop` |
 | macOS | `~/Library/LaunchAgents/com.vibes.vibes-copy-manager.plist` |
 | Windows | `%APPDATA%\...\Startup\vibes-copy-manager.bat` |
 
-### Verify It Works
+### Verify
 
 ```bash
-# CLI
 vcm push "test"
 vcm list
 vcm pop
-
-# GUI
-# Press your configured shortcut or click the tray icon
 ```
 
 ---
@@ -204,18 +203,14 @@ rm ~/.local/bin/vcm
 
 ### GUI
 
-**Linux (.deb):**
-```bash
-sudo apt remove clipboard-manager
-```
+| Platform | Method |
+|----------|--------|
+| Linux (.deb) | `sudo apt remove vibes-copy-manager` |
+| Linux (AppImage) | Delete the file |
+| macOS | Drag from Applications to Trash |
+| Windows | Add/Remove Programs |
 
-**Linux (AppImage):** Delete the file.
-
-**Windows:** Use Add/Remove Programs.
-
-**macOS:** Drag from Applications to Trash.
-
-### Remove config and data
+### Remove data
 
 ```bash
 rm -rf ~/.config/vibes-copy-manager

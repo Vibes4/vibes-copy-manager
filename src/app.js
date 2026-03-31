@@ -315,6 +315,10 @@ listen('window-shown', () => {
   activateWindow();
 });
 
+listen('open-settings', () => {
+  setTimeout(openSettings, 200);
+});
+
 window.addEventListener('blur', () => {
   if (!settingsModal.classList.contains('hidden')) return;
   hideWindow();

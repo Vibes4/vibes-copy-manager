@@ -19,31 +19,33 @@ pub struct ClipboardTextUpdate {
 pub struct ClipboardImageUpdate {
     #[serde(rename = "type")]
     pub kind: String,
-    pub content: String, // base64 PNG
+    pub content: String,
     pub width: usize,
     pub height: usize,
 }
 
 pub fn start_watcher(app: AppHandle, last_text: Arc<Mutex<String>>, last_img_hash: Arc<Mutex<u64>>) {
     thread::spawn(move || {
-        if let Ok(mut cb) = Clipboard::new() {
-            if let Ok(t) = cb.get_text() {
-                if !t.trim().is_empty() {
-                    *last_text.lock().unwrap() = t;
+        match Clipboard::new() {
+            Ok(mut cb) => {
+                if let Ok(t) = cb.get_text() {
+                    if !t.trim().is_empty() {
+                        let mut guard = last_text.lock().unwrap_or_else(|p| p.into_inner());
+                        *guard = t;
+                    }
                 }
+            }
+            Err(e) => {
+                log::warn!("Could not open clipboard for initial read: {e}");
             }
         }
 
         loop {
             thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
 
-            // Try text first
             if let Ok(text) = Clipboard::new().and_then(|mut cb| cb.get_text()) {
                 if !text.trim().is_empty() {
-                    let mut last = match last_text.lock() {
-                        Ok(g) => g,
-                        Err(p) => p.into_inner(),
-                    };
+                    let mut last = last_text.lock().unwrap_or_else(|p| p.into_inner());
                     if *last != text {
                         *last = text.clone();
                         let _ = app.emit(
@@ -58,17 +60,12 @@ pub fn start_watcher(app: AppHandle, last_text: Arc<Mutex<String>>, last_img_has
                 }
             }
 
-            // Try image
             if let Ok(img) = Clipboard::new().and_then(|mut cb| cb.get_image()) {
                 let hash = simple_hash(&img.bytes);
-                let mut last_h = match last_img_hash.lock() {
-                    Ok(g) => g,
-                    Err(p) => p.into_inner(),
-                };
+                let mut last_h = last_img_hash.lock().unwrap_or_else(|p| p.into_inner());
                 if *last_h != hash && !img.bytes.is_empty() {
                     *last_h = hash;
 
-                    // Convert RGBA raw bytes to base64-encoded PNG
                     if let Some(b64) = rgba_to_base64_png(
                         &img.bytes,
                         img.width as u32,
