@@ -23,7 +23,7 @@ A fast, cross-platform clipboard manager with a GUI popup and CLI tool. Built wi
 ### One-line install (CLI)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/vibes4/vibes-copy-manager/main/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/vibes4/vibes-copy-manager/master/install.sh | sh
 ```
 
 This installs the `vcm` CLI binary to `~/.local/bin/`.
