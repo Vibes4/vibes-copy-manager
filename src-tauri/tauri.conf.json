@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Vibes Copy Manager",
-  "version": "0.3.0",
-  "identifier": "com.vibes.clipboard-manager",
+  "version": "1.0.0",
+  "identifier": "com.vibes.vcm",
   "build": {
     "frontendDist": "../src"
   },
