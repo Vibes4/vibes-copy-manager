@@ -1,0 +1,206 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: linux-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: linux-cargo-
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Build GUI (AppImage + deb)
+        run: cargo tauri build
+
+      - name: Build CLI
+        working-directory: src-tauri
+        run: cargo build --release --bin vcm --no-default-features
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p artifacts
+
+          # AppImage
+          cp src-tauri/target/release/bundle/appimage/*.AppImage artifacts/vcm-linux.AppImage
+
+          # Deb
+          cp src-tauri/target/release/bundle/deb/*.deb artifacts/vcm-linux.deb
+
+          # CLI binary
+          cp src-tauri/target/release/vcm artifacts/vcm-linux
+
+          chmod +x artifacts/vcm-linux.AppImage artifacts/vcm-linux
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: artifacts/
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: macos-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: macos-cargo-
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Build GUI (dmg)
+        run: cargo tauri build
+
+      - name: Build CLI
+        working-directory: src-tauri
+        run: cargo build --release --bin vcm --no-default-features
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p artifacts
+
+          # DMG
+          cp src-tauri/target/release/bundle/dmg/*.dmg artifacts/vcm-macos.dmg
+
+          # GUI binary for curl install
+          cp "src-tauri/target/release/Vibes Copy Manager" artifacts/vcm-macos || \
+          cp src-tauri/target/release/vibes-copy-manager artifacts/vcm-macos || true
+
+          # CLI binary
+          cp src-tauri/target/release/vcm artifacts/vcm-macos-cli
+
+          chmod +x artifacts/vcm-macos artifacts/vcm-macos-cli 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: artifacts/
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: windows-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: windows-cargo-
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Build GUI (msi)
+        run: cargo tauri build
+
+      - name: Build CLI
+        working-directory: src-tauri
+        run: cargo build --release --bin vcm --no-default-features
+
+      - name: Prepare artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts
+
+          # MSI
+          cp src-tauri/target/release/bundle/msi/*.msi artifacts/vcm-windows.msi
+
+          # CLI exe
+          cp src-tauri/target/release/vcm.exe artifacts/vcm-windows.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: artifacts/
+
+  release:
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    if: >-
+      github.ref_type == 'tag'
+      && startsWith(github.ref, 'refs/tags/v')
+      && github.actor == 'Vibes4'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure tag is from master
+        run: |
+          git fetch origin master
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::Tag is not from master branch. Release aborted."
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -lhR artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/vcm-linux.AppImage
+            artifacts/vcm-linux.deb
+            artifacts/vcm-linux
+            artifacts/vcm-macos.dmg
+            artifacts/vcm-macos
+            artifacts/vcm-macos-cli
+            artifacts/vcm-windows.msi
+            artifacts/vcm-windows.exe

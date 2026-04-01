@@ -11,6 +11,7 @@ A fast, cross-platform clipboard manager with a GUI popup and CLI tool. Built wi
 - **Configurable shortcut** — set any global hotkey from UI or CLI
 - **CLI support** — push, pop, list, clear, and configure from the terminal
 - **Cross-platform** — Linux (X11 + Wayland), macOS, and Windows
+- **Dark / Light theme** — toggle in settings, persisted across sessions
 - **Auto-paste** — selecting an item writes to clipboard and simulates paste
 - **System tray** — runs in the background with a tray icon
 - **Single instance** — launching again shows the existing window
@@ -20,15 +21,15 @@ A fast, cross-platform clipboard manager with a GUI popup and CLI tool. Built wi
 
 ## Installation
 
-### One-line install (CLI)
+### One-line install (Linux / macOS)
+
+Installs both CLI (`vcm`) and GUI (`vcm-gui`) to `~/.local/bin/`:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/vibes4/vibes-copy-manager/master/install.sh | sh
 ```
 
-This installs the `vcm` CLI binary to `~/.local/bin/`.
-
-### Manual install (GUI + CLI)
+### Manual install
 
 Download the latest release for your platform:
 
@@ -45,7 +46,7 @@ See [INSTALLATION.md](INSTALLATION.md) for detailed OS-specific instructions.
 
 ## Usage
 
-Launch the GUI (if installed):
+Open the GUI:
 
 ```bash
 vcm
@@ -65,6 +66,7 @@ vcm settings                    # Show current config
 vcm settings shortcut "Ctrl+Shift+V"   # Set shortcut
 vcm settings shortcut none      # Disable shortcut
 vcm settings max-items 100      # Set max history items
+vcm settings theme dark         # Set theme (dark/light/system)
 vcm settings autostart on       # Enable autostart
 vcm settings autostart off      # Disable autostart
 ```
@@ -87,8 +89,6 @@ Press your configured shortcut or click the system tray icon to open the popup.
 
 The app ships with **no default shortcut**. On first launch, the Settings panel opens so you can configure one.
 
-You can set it via CLI or the GUI Settings panel:
-
 ```bash
 vcm settings shortcut "Ctrl+Shift+V"
 ```
@@ -101,7 +101,7 @@ vcm settings shortcut "Ctrl+Shift+V"
 | macOS | `Cmd+Shift+V` | Set via vcm settings |
 | Windows | `Ctrl+Shift+V` | Set via vcm settings |
 
-Leave the shortcut empty to disable it entirely — use the tray icon or `vcm` CLI instead.
+Leave the shortcut empty to disable it — use the tray icon or `vcm` CLI instead.
 
 ---
 
@@ -117,11 +117,17 @@ Settings are stored at:
 {
   "shortcut": "Ctrl+Shift+V",
   "maxItems": 50,
-  "autoStart": false
+  "autoStart": false,
+  "theme": "dark"
 }
 ```
 
-Set `shortcut` to `null` to disable the global shortcut.
+| Key | Values | Description |
+|-----|--------|-------------|
+| `shortcut` | string or `null` | Global hotkey |
+| `maxItems` | 10–5000 | Max clipboard entries |
+| `autoStart` | `true`/`false` | Start on login |
+| `theme` | `"dark"`, `"light"`, `"system"` | UI theme |
 
 Clipboard history is stored at:
 
@@ -129,7 +135,26 @@ Clipboard history is stored at:
 ~/.local/share/vibes-copy-manager/clipboard_history.json
 ```
 
-Both the CLI and GUI share the same history file.
+Both the CLI and GUI share the same config and history files.
+
+---
+
+## Releasing
+
+Releases are built automatically via GitHub Actions when a tag is pushed:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+This builds for Linux, macOS, and Windows, and creates a GitHub Release with:
+
+| OS | Files |
+|----|-------|
+| Linux | `vcm-linux.AppImage`, `vcm-linux.deb`, `vcm-linux` |
+| macOS | `vcm-macos.dmg`, `vcm-macos` |
+| Windows | `vcm-windows.msi`, `vcm-windows.exe` |
 
 ---
 
@@ -176,9 +201,9 @@ Output:
 ```
 src/                        Frontend (Vanilla JS + Tailwind)
 ├── index.html              Main UI
-├── app.js                  UI logic, events, settings
+├── app.js                  UI logic, events, settings, theme
 ├── clipboard.js            In-memory history management
-└── styles.css              Custom CSS + animations
+└── styles.css              CSS custom properties + animations
 
 src-tauri/src/              Rust backend
 ├── main.rs                 GUI entry point

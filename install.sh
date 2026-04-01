@@ -3,7 +3,6 @@ set -eu
 
 REPO="vibes4/vibes-copy-manager"
 INSTALL_DIR="${HOME}/.local/bin"
-BINARY_NAME="vcm"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -17,13 +16,11 @@ ok()    { printf "${GREEN}  ok${NC}  %s\n" "$1"; }
 warn()  { printf "${YELLOW}warn${NC}  %s\n" "$1" >&2; }
 err()   { printf "${RED}error${NC} %s\n" "$1" >&2; }
 
-detect_platform() {
+detect_os() {
     _os="$(uname -s)"
-    _arch="$(uname -m)"
-
     case "$_os" in
-        Linux*)  _os="linux" ;;
-        Darwin*) _os="macos" ;;
+        Linux*)  echo "linux" ;;
+        Darwin*) echo "macos" ;;
         CYGWIN*|MINGW*|MSYS*)
             err "Windows is not supported via this installer."
             echo ""
@@ -36,17 +33,6 @@ detect_platform() {
             exit 1
             ;;
     esac
-
-    case "$_arch" in
-        x86_64|amd64)   _arch="x86_64" ;;
-        aarch64|arm64)   _arch="aarch64" ;;
-        *)
-            err "Unsupported architecture: $_arch"
-            exit 1
-            ;;
-    esac
-
-    echo "${_os}-${_arch}"
 }
 
 download() {
@@ -74,20 +60,98 @@ check_path() {
     echo ""
 
     _shell_name="$(basename "${SHELL:-/bin/bash}")"
-
     case "$_shell_name" in
         zsh)
-            echo "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc"
-            echo "    source ~/.zshrc"
+            echo "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc && source ~/.zshrc"
             ;;
         fish)
             echo "    fish_add_path ~/.local/bin"
             ;;
         *)
-            echo "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc"
-            echo "    source ~/.bashrc"
+            echo "    echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc && source ~/.bashrc"
             ;;
     esac
+}
+
+install_binary() {
+    _name="$1"
+    _url="$2"
+    _dest="${INSTALL_DIR}/${_name}"
+
+    _tmpfile="$(mktemp)"
+    if download "$_url" "$_tmpfile" 2>/dev/null; then
+        mv "$_tmpfile" "$_dest"
+        chmod +x "$_dest"
+        ok "Installed ${_name} to ${_dest}"
+        return 0
+    else
+        rm -f "$_tmpfile"
+        return 1
+    fi
+}
+
+main() {
+    printf "\n"
+    printf "  ${BOLD}Vibes Copy Manager${NC} — Installer\n"
+    printf "\n"
+
+    _os="$(detect_os)"
+    info "Detected OS: ${_os}"
+
+    mkdir -p "$INSTALL_DIR"
+
+    _base="https://github.com/${REPO}/releases/latest/download"
+    _installed=0
+
+    # ── Install GUI (AppImage on Linux, binary on macOS) ──
+    case "$_os" in
+        linux)
+            info "Installing GUI (AppImage)..."
+            if install_binary "vcm-gui" "${_base}/vcm-linux.AppImage"; then
+                _installed=1
+            else
+                warn "GUI binary not available. Download manually from:"
+                echo "      https://github.com/${REPO}/releases/latest"
+            fi
+            ;;
+        macos)
+            info "Installing GUI..."
+            if install_binary "vcm-gui" "${_base}/vcm-macos"; then
+                _installed=1
+            else
+                warn "GUI binary not available. Download the .dmg from:"
+                echo "      https://github.com/${REPO}/releases/latest"
+            fi
+            ;;
+    esac
+
+    # ── Install CLI ──
+    info "Installing CLI..."
+    if install_binary "vcm" "${_base}/vcm-${_os}"; then
+        _installed=1
+    else
+        if [ "$_installed" -eq 0 ]; then
+            warn "Pre-built binaries not available."
+            info "Falling back to build from source..."
+            build_from_source
+        else
+            warn "CLI binary not available. Build from source with:"
+            echo "      cd src-tauri && cargo build --release --bin vcm --no-default-features"
+        fi
+    fi
+
+    check_path
+
+    echo ""
+    printf "  ${GREEN}${BOLD}Installation complete!${NC}\n"
+    echo ""
+    echo "  Get started:"
+    echo "    vcm               Open GUI (clipboard popup)"
+    echo "    vcm --help        Show all CLI commands"
+    echo "    vcm list          List clipboard history"
+    echo "    vcm push \"text\"   Add text to history"
+    echo "    vcm settings      View configuration"
+    echo ""
 }
 
 build_from_source() {
@@ -119,53 +183,9 @@ build_from_source() {
         exit 1
     }
 
-    cp "$_tmpdir/vcm/src-tauri/target/release/vcm" "${INSTALL_DIR}/${BINARY_NAME}"
-    chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
-    ok "Built and installed ${BINARY_NAME} to ${INSTALL_DIR}/${BINARY_NAME}"
-}
-
-main() {
-    printf "\n"
-    printf "  ${BOLD}Vibes Copy Manager${NC} — Installer\n"
-    printf "\n"
-
-    _platform="$(detect_platform)"
-    info "Detected platform: ${_platform}"
-
-    mkdir -p "$INSTALL_DIR"
-
-    _base_url="https://github.com/${REPO}/releases/latest/download"
-    _download_url="${_base_url}/vcm-${_platform}"
-
-    info "Downloading from GitHub Releases..."
-
-    _tmpfile="$(mktemp)"
-    trap 'rm -f "$_tmpfile"' EXIT
-
-    if download "$_download_url" "$_tmpfile" 2>/dev/null; then
-        mv "$_tmpfile" "${INSTALL_DIR}/${BINARY_NAME}"
-        chmod +x "${INSTALL_DIR}/${BINARY_NAME}"
-        ok "Installed ${BINARY_NAME} to ${INSTALL_DIR}/${BINARY_NAME}"
-    else
-        warn "Pre-built binary not available for ${_platform}."
-        info "Falling back to build from source..."
-        build_from_source
-    fi
-
-    check_path
-
-    echo ""
-    printf "  ${GREEN}${BOLD}Installation complete!${NC}\n"
-    echo ""
-    echo "  Get started:"
-    echo "    vcm --help        Show all commands"
-    echo "    vcm list          List clipboard history"
-    echo "    vcm push \"text\"   Add text to history"
-    echo "    vcm settings      View configuration"
-    echo ""
-    echo "  GUI app (if installed separately):"
-    echo "    Download from https://github.com/${REPO}/releases/latest"
-    echo ""
+    cp "$_tmpdir/vcm/src-tauri/target/release/vcm" "${INSTALL_DIR}/vcm"
+    chmod +x "${INSTALL_DIR}/vcm"
+    ok "Built and installed vcm to ${INSTALL_DIR}/vcm"
 }
 
 main "$@"

@@ -12,6 +12,12 @@ pub struct AppConfig {
     pub max_items: usize,
     #[serde(rename = "autoStart", default)]
     pub auto_start: bool,
+    #[serde(default = "default_theme")]
+    pub theme: String,
+}
+
+fn default_theme() -> String {
+    "dark".to_string()
 }
 
 impl Default for AppConfig {
@@ -20,6 +26,7 @@ impl Default for AppConfig {
             shortcut: None,
             max_items: 50,
             auto_start: false,
+            theme: default_theme(),
         }
     }
 }

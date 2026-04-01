@@ -19,11 +19,37 @@ const shortcutInput    = document.getElementById('shortcut-input');
 const maxItemsInput    = document.getElementById('max-items-input');
 const autostartToggle  = document.getElementById('autostart-toggle');
 const settingsError    = document.getElementById('settings-error');
+const themeBtns        = document.querySelectorAll('.theme-btn');
 
 let selectedIndex = 0;
 let filteredItems = [];
 let saveTimer = null;
 let searchDebounce = null;
+let currentThemeSetting = 'dark';
+
+// ─── Theme ────────────────────────────────────────────────────────
+
+function applyTheme(theme) {
+  currentThemeSetting = theme;
+  let effective = theme;
+
+  if (theme === 'system') {
+    effective = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  document.documentElement.classList.remove('dark', 'light');
+  document.documentElement.classList.add(effective);
+}
+
+function updateThemeButtons(theme) {
+  themeBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === theme);
+  });
+}
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (currentThemeSetting === 'system') applyTheme('system');
+});
 
 // ─── Window Control ──────────────────────────────────────────────
 
@@ -40,7 +66,6 @@ function activateWindow() {
   searchInput.value = '';
   render();
 
-  // Reset animation state: start hidden, then trigger visible on next frame
   appEl.classList.remove('app-visible', 'app-hiding');
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -263,6 +288,8 @@ function scrollToSelected() {
 
 // ─── Settings Modal ──────────────────────────────────────────────
 
+let pendingTheme = 'dark';
+
 function openSettings() {
   Promise.all([
     invoke('get_config'),
@@ -271,6 +298,8 @@ function openSettings() {
     shortcutInput.value = cfg.shortcut || '';
     maxItemsInput.value = cfg.maxItems || 50;
     autostartToggle.checked = autoEnabled;
+    pendingTheme = cfg.theme || 'dark';
+    updateThemeButtons(pendingTheme);
     settingsError.classList.add('hidden');
     settingsModal.classList.remove('hidden');
     shortcutInput.focus();
@@ -295,8 +324,10 @@ async function saveSettings() {
 
   try {
     const autoStart = autostartToggle.checked;
-    await invoke('set_config', { cfg: { shortcut, maxItems, autoStart } });
+    const theme = pendingTheme;
+    await invoke('set_config', { cfg: { shortcut, maxItems, autoStart, theme } });
     history.maxItems = maxItems;
+    applyTheme(theme);
     closeSettings();
   } catch (e) {
     settingsError.textContent = String(e);
@@ -308,6 +339,14 @@ settingsBtn.addEventListener('click', openSettings);
 settingsClose.addEventListener('click', closeSettings);
 settingsCancel.addEventListener('click', closeSettings);
 settingsSave.addEventListener('click', saveSettings);
+
+themeBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    pendingTheme = btn.dataset.theme;
+    updateThemeButtons(pendingTheme);
+    applyTheme(pendingTheme);
+  });
+});
 
 // ─── Window Lifecycle ────────────────────────────────────────────
 
@@ -367,8 +406,9 @@ async function loadPersistedHistory() {
 async function loadConfig() {
   try {
     const cfg = await invoke('get_config');
-    if (cfg && cfg.maxItems) {
-      history.maxItems = cfg.maxItems;
+    if (cfg) {
+      if (cfg.maxItems) history.maxItems = cfg.maxItems;
+      applyTheme(cfg.theme || 'dark');
     }
   } catch (_) {}
 }

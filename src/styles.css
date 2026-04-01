@@ -16,7 +16,45 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Drag: disabled for now (causes focus-loss on Linux) */
+/* ─── Theme: CSS custom properties ────────────────────── */
+
+:root, html.dark {
+  --bg:           #0e0e12;
+  --bg-card:      #16161d;
+  --bg-hover:     #1e1e28;
+  --border:       #232330;
+  --border-light: #2a2a3a;
+  --accent:       #6c5ce7;
+  --txt:          #e2e2e8;
+  --txt-dim:      #6b6b80;
+  --txt-muted:    #45455a;
+  --shadow-outer: rgba(0,0,0,0.5);
+  --shadow-inner: rgba(0,0,0,0.3);
+  --app-border:   rgba(255,255,255,0.06);
+  --scrollbar:    rgba(255,255,255,0.08);
+  --scrollbar-hv: rgba(255,255,255,0.15);
+  --kbd-bg:       rgba(255,255,255,0.06);
+  --kbd-border:   rgba(255,255,255,0.08);
+}
+
+html.light {
+  --bg:           #f5f5f7;
+  --bg-card:      #ffffff;
+  --bg-hover:     #eaeaef;
+  --border:       #d8d8e0;
+  --border-light: #ccccd6;
+  --accent:       #6c5ce7;
+  --txt:          #1a1a2e;
+  --txt-dim:      #6b6b80;
+  --txt-muted:    #9898a8;
+  --shadow-outer: rgba(0,0,0,0.12);
+  --shadow-inner: rgba(0,0,0,0.06);
+  --app-border:   rgba(0,0,0,0.08);
+  --scrollbar:    rgba(0,0,0,0.10);
+  --scrollbar-hv: rgba(0,0,0,0.20);
+  --kbd-bg:       rgba(0,0,0,0.05);
+  --kbd-border:   rgba(0,0,0,0.10);
+}
 
 /* ─── Scrollbar ──────────────────────────────────────── */
 
@@ -30,11 +68,11 @@ body {
   background: transparent;
 }
 .scroll-area::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.08);
+  background: var(--scrollbar);
   border-radius: 2px;
 }
 .scroll-area::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.15);
+  background: var(--scrollbar-hv);
 }
 
 /* ─── Text clamping ──────────────────────────────────── */
@@ -53,8 +91,8 @@ body {
   padding: 0px 4px;
   font-size: 0.6rem;
   font-family: inherit;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
   border-radius: 3px;
   line-height: 1.4;
   vertical-align: middle;
@@ -73,10 +111,10 @@ body {
   transform: scale(0.96) translateY(4px);
   transition: opacity 150ms ease-out, transform 150ms ease-out;
   will-change: opacity, transform;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid var(--app-border);
   box-shadow:
-    0 8px 30px rgba(0,0,0,0.5),
-    0 2px 8px rgba(0,0,0,0.3);
+    0 8px 30px var(--shadow-outer),
+    0 2px 8px var(--shadow-inner);
 }
 
 #app.app-visible {
@@ -88,4 +126,20 @@ body {
   opacity: 0;
   transform: scale(0.96) translateY(4px);
   transition: opacity 100ms ease-in, transform 100ms ease-in;
+}
+
+/* ─── Theme button states ────────────────────────────── */
+
+.theme-btn {
+  color: var(--txt-dim);
+  background: transparent;
+}
+.theme-btn:hover {
+  background: var(--bg-hover);
+  color: var(--txt);
+}
+.theme-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }

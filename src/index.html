@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Clipboard Manager</title>
+  <title>Vibes Copy Manager</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -11,10 +11,10 @@
       theme: {
         extend: {
           colors: {
-            bg:      { DEFAULT: '#0e0e12', card: '#16161d', hover: '#1e1e28' },
-            border:  { DEFAULT: '#232330', light: '#2a2a3a' },
-            accent:  '#6c5ce7',
-            txt:     { DEFAULT: '#e2e2e8', dim: '#6b6b80', muted: '#45455a' },
+            bg:      { DEFAULT: 'var(--bg)',      card: 'var(--bg-card)', hover: 'var(--bg-hover)' },
+            border:  { DEFAULT: 'var(--border)',  light: 'var(--border-light)' },
+            accent:  'var(--accent)',
+            txt:     { DEFAULT: 'var(--txt)',     dim: 'var(--txt-dim)',  muted: 'var(--txt-muted)' },
           },
           fontSize: {
             '2xs': ['0.65rem', '0.9rem'],
@@ -25,7 +25,7 @@
   </script>
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body class="dark text-txt overflow-hidden select-none bg-transparent">
+<body class="text-txt overflow-hidden select-none bg-transparent">
   <div id="app" class="flex flex-col h-screen bg-bg rounded-xl">
 
     <!-- Header -->
@@ -114,12 +114,30 @@
           <p class="text-2xs text-txt-muted mt-1">Use Ctrl, Shift, Alt, Super + key. Leave empty to disable.</p>
         </label>
 
-        <label class="block mb-4">
+        <label class="block mb-3">
           <span class="text-2xs text-txt-muted uppercase tracking-wider mb-1 block">Max History Items</span>
           <input id="max-items-input" type="number" min="10" max="5000"
             class="w-full bg-bg border border-border rounded-lg px-3 py-1.5 text-sm text-txt focus:outline-none focus:border-accent/50 transition-colors"
             placeholder="50" />
         </label>
+
+        <div class="mb-3">
+          <span class="text-2xs text-txt-muted uppercase tracking-wider mb-1.5 block">Theme</span>
+          <div class="flex gap-1.5">
+            <button data-theme="dark"
+              class="theme-btn flex-1 text-xs py-1.5 rounded-lg border border-border transition-colors">
+              Dark
+            </button>
+            <button data-theme="light"
+              class="theme-btn flex-1 text-xs py-1.5 rounded-lg border border-border transition-colors">
+              Light
+            </button>
+            <button data-theme="system"
+              class="theme-btn flex-1 text-xs py-1.5 rounded-lg border border-border transition-colors">
+              System
+            </button>
+          </div>
+        </div>
 
         <label class="flex items-center gap-2.5 mb-4 cursor-pointer">
           <input id="autostart-toggle" type="checkbox"

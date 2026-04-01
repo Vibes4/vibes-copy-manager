@@ -64,6 +64,12 @@ enum SettingsAction {
         /// "on" or "off"
         value: String,
     },
+
+    /// Set theme ("dark", "light", or "system")
+    Theme {
+        /// Theme value
+        value: String,
+    },
 }
 
 fn main() {
@@ -88,9 +94,9 @@ fn cmd_open_gui() {
     let exe_dir = exe.as_ref().and_then(|p| p.parent());
 
     let gui_names: &[&str] = if cfg!(target_os = "windows") {
-        &["vibes-copy-manager.exe", "clipboard-manager.exe"]
+        &["vcm-gui.exe", "vibes-copy-manager.exe"]
     } else {
-        &["vibes-copy-manager", "clipboard-manager"]
+        &["vcm-gui", "vibes-copy-manager"]
     };
 
     let mut search_dirs: Vec<std::path::PathBuf> = Vec::new();
@@ -126,8 +132,10 @@ fn cmd_open_gui() {
         }
     }
 
-    eprintln!("Could not find the GUI binary (vibes-copy-manager).");
-    eprintln!("Make sure the GUI is installed, or use CLI commands:");
+    eprintln!("Could not find the GUI binary (vcm-gui or vibes-copy-manager).");
+    eprintln!("Install it: curl -sSL https://raw.githubusercontent.com/vibes4/vibes-copy-manager/master/install.sh | sh");
+    eprintln!();
+    eprintln!("Or use CLI commands directly:");
     eprintln!("  vcm push \"text\"");
     eprintln!("  vcm pop");
     eprintln!("  vcm list");
@@ -228,6 +236,7 @@ fn cmd_settings(action: Option<SettingsAction>) {
             );
             println!("  maxItems:   {}", cfg.max_items);
             println!("  autoStart:  {}", cfg.auto_start);
+            println!("  theme:      {}", cfg.theme);
             println!("\nUse `vcm settings shortcut <value>` to change settings.");
         }
         Some(SettingsAction::Shortcut { value }) => {
@@ -282,6 +291,19 @@ fn cmd_settings(action: Option<SettingsAction>) {
                 eprintln!("warning: could not disable autostart: {e}");
             } else {
                 println!("Autostart disabled.");
+            }
+        }
+        Some(SettingsAction::Theme { value }) => {
+            match value.to_lowercase().as_str() {
+                "dark" | "light" | "system" => {
+                    cfg.theme = value.to_lowercase();
+                    config::save(&cfg);
+                    println!("Theme set to: {}. Restart the GUI to apply.", cfg.theme);
+                }
+                _ => {
+                    eprintln!("Invalid theme. Use 'dark', 'light', or 'system'.");
+                    std::process::exit(1);
+                }
             }
         }
     }
