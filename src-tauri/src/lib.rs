@@ -134,11 +134,6 @@ pub fn run() {
                         let _ = w.hide();
                         let _ = w.set_always_on_top(false);
                     }
-                    WindowEvent::Focused(false) => {
-                        let _ = w.emit("window-hiding", ());
-                        let _ = w.hide();
-                        let _ = w.set_always_on_top(false);
-                    }
                     _ => {}
                 });
             }

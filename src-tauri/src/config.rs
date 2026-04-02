@@ -105,7 +105,7 @@ pub fn parse_shortcut(
             "ctrl" | "control" => mods |= Modifiers::CONTROL,
             "shift" => mods |= Modifiers::SHIFT,
             "alt" => mods |= Modifiers::ALT,
-            "super" | "meta" | "cmd" | "command" => mods |= Modifiers::SUPER,
+            "super" | "meta" | "cmd" | "command" | "win" | "windows" | "window" => mods |= Modifiers::SUPER,
             _ => key_part = Some(part),
         }
     }
@@ -153,7 +153,7 @@ pub fn validate_shortcut(s: &str) -> Result<(), String> {
 
     for part in &parts {
         match part.to_lowercase().as_str() {
-            "ctrl" | "control" | "shift" | "alt" | "super" | "meta" | "cmd" | "command" => {
+            "ctrl" | "control" | "shift" | "alt" | "super" | "meta" | "cmd" | "command" | "win" | "windows" | "window" => {
                 has_modifier = true;
             }
             k => {

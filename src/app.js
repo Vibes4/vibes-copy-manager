@@ -15,8 +15,17 @@ const settingsModal    = document.getElementById('settings-modal');
 const settingsClose    = document.getElementById('settings-close');
 const settingsSave     = document.getElementById('settings-save');
 const settingsCancel   = document.getElementById('settings-cancel');
-const shortcutInput    = document.getElementById('shortcut-input');
-const maxItemsInput    = document.getElementById('max-items-input');
+const shortcutInput      = document.getElementById('shortcut-input');
+const shortcutRecorder   = document.getElementById('shortcut-recorder');
+const shortcutRecorderWrap = document.getElementById('shortcut-recorder-wrap');
+const shortcutDisplay    = document.getElementById('shortcut-display');
+const shortcutClear      = document.getElementById('shortcut-clear');
+const shortcutModeToggle = document.getElementById('shortcut-mode-toggle');
+const shortcutTextWrap   = document.getElementById('shortcut-text-wrap');
+const shortcutTextInput  = document.getElementById('shortcut-text-input');
+const shortcutHint       = document.getElementById('shortcut-hint');
+const modeLabel          = document.getElementById('mode-label');
+const maxItemsInput      = document.getElementById('max-items-input');
 const autostartToggle  = document.getElementById('autostart-toggle');
 const settingsError    = document.getElementById('settings-error');
 const themeBtns        = document.querySelectorAll('.theme-btn');
@@ -26,6 +35,7 @@ let filteredItems = [];
 let saveTimer = null;
 let searchDebounce = null;
 let currentThemeSetting = 'dark';
+let isDragging = false;
 
 // ─── Theme ────────────────────────────────────────────────────────
 
@@ -49,6 +59,171 @@ function updateThemeButtons(theme) {
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
   if (currentThemeSetting === 'system') applyTheme('system');
+});
+
+// ─── Drag Handling ───────────────────────────────────────────────
+
+document.getElementById('header').addEventListener('mousedown', (e) => {
+  if (e.target.closest('button')) return;
+  isDragging = true;
+});
+
+document.addEventListener('mouseup', () => {
+  if (isDragging) {
+    setTimeout(() => { isDragging = false; }, 200);
+  }
+});
+
+// ─── Shortcut Input (Recorder + Manual Toggle) ─────────────────
+
+let isRecording = false;
+let shortcutMode = 'record'; // 'record' or 'text'
+
+function formatKeyForDisplay(key) {
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const map = {
+    'Control': isMac ? 'Ctrl' : 'Ctrl',
+    'Meta': isMac ? 'Cmd' : 'Super',
+    'Alt': 'Alt',
+    'Shift': 'Shift',
+  };
+  return map[key] || key;
+}
+
+function formatKeyForConfig(parts) {
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  return parts.map(p => {
+    if (p === 'Meta') return isMac ? 'Cmd' : 'Super';
+    if (p === 'Control') return 'Ctrl';
+    return p;
+  }).join('+');
+}
+
+function renderShortcutDisplay(value) {
+  if (!value) {
+    shortcutDisplay.innerHTML = '<span class="text-txt-muted">Click to record shortcut…</span>';
+    shortcutClear.classList.add('hidden');
+    return;
+  }
+  const parts = value.split('+');
+  shortcutDisplay.innerHTML = parts.map(p =>
+    `<span class="shortcut-key">${p}</span>`
+  ).join('<span class="text-txt-muted mx-0.5">+</span>');
+  shortcutClear.classList.remove('hidden');
+}
+
+function setShortcutMode(mode) {
+  shortcutMode = mode;
+  if (mode === 'text') {
+    shortcutRecorderWrap.classList.add('hidden');
+    shortcutTextWrap.classList.remove('hidden');
+    modeLabel.textContent = 'Record keys';
+    shortcutHint.textContent = 'Type shortcut like Super+V, Ctrl+Shift+V, Alt+V. Leave empty to disable.';
+    shortcutTextInput.value = shortcutInput.value || '';
+    shortcutTextInput.focus();
+  } else {
+    shortcutTextWrap.classList.add('hidden');
+    shortcutRecorderWrap.classList.remove('hidden');
+    modeLabel.textContent = 'Type manually';
+    shortcutHint.textContent = 'Click and press your desired key combination. Leave empty to disable.';
+    const textVal = shortcutTextInput.value.trim();
+    if (textVal) {
+      shortcutInput.value = textVal;
+      renderShortcutDisplay(textVal);
+    }
+  }
+}
+
+shortcutModeToggle.addEventListener('click', (e) => {
+  e.preventDefault();
+  if (shortcutMode === 'record') {
+    const textVal = shortcutTextInput.value.trim();
+    if (!textVal && shortcutInput.value) {
+      shortcutTextInput.value = shortcutInput.value;
+    }
+    setShortcutMode('text');
+  } else {
+    setShortcutMode('record');
+  }
+});
+
+shortcutTextInput.addEventListener('input', () => {
+  shortcutInput.value = shortcutTextInput.value.trim();
+});
+
+function startRecording() {
+  isRecording = true;
+  shortcutRecorder.classList.add('recording');
+  shortcutDisplay.innerHTML = '<span class="text-txt-muted animate-pulse">Press keys…</span>';
+}
+
+function stopRecording() {
+  isRecording = false;
+  shortcutRecorder.classList.remove('recording');
+}
+
+shortcutRecorder.addEventListener('focus', () => {
+  startRecording();
+});
+
+shortcutRecorder.addEventListener('blur', () => {
+  stopRecording();
+  if (!shortcutInput.value) {
+    renderShortcutDisplay(null);
+  }
+});
+
+shortcutRecorder.addEventListener('keydown', (e) => {
+  if (!isRecording) return;
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (e.key === 'Escape') {
+    stopRecording();
+    shortcutRecorder.blur();
+    return;
+  }
+
+  if (e.key === 'Backspace' || e.key === 'Delete') {
+    shortcutInput.value = '';
+    renderShortcutDisplay(null);
+    stopRecording();
+    shortcutRecorder.blur();
+    return;
+  }
+
+  const modifiers = [];
+  if (e.ctrlKey) modifiers.push('Control');
+  if (e.altKey) modifiers.push('Alt');
+  if (e.shiftKey) modifiers.push('Shift');
+  if (e.metaKey) modifiers.push('Meta');
+
+  const isModifierOnly = ['Control', 'Alt', 'Shift', 'Meta'].includes(e.key);
+  if (isModifierOnly) {
+    const display = modifiers.map(formatKeyForDisplay).join(' + ') + ' + …';
+    shortcutDisplay.innerHTML = `<span class="text-txt-muted">${display}</span>`;
+    return;
+  }
+
+  if (modifiers.length === 0) return;
+
+  let key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+  const configParts = [...modifiers, key];
+  const configStr = formatKeyForConfig(configParts);
+  const displayParts = [...modifiers.map(formatKeyForDisplay), key];
+  const displayStr = displayParts.join('+');
+
+  shortcutInput.value = configStr;
+  renderShortcutDisplay(displayStr);
+  stopRecording();
+  shortcutRecorder.blur();
+});
+
+shortcutClear.addEventListener('click', (e) => {
+  e.stopPropagation();
+  shortcutInput.value = '';
+  shortcutTextInput.value = '';
+  renderShortcutDisplay(null);
 });
 
 // ─── Window Control ──────────────────────────────────────────────
@@ -230,6 +405,8 @@ async function pasteItem(idx) {
 // ─── Keyboard Navigation ─────────────────────────────────────────
 
 document.addEventListener('keydown', (e) => {
+  if (isRecording) return;
+
   if (!settingsModal.classList.contains('hidden')) {
     if (e.key === 'Escape') closeSettings();
     return;
@@ -296,13 +473,15 @@ function openSettings() {
     invoke('get_autostart'),
   ]).then(([cfg, autoEnabled]) => {
     shortcutInput.value = cfg.shortcut || '';
+    shortcutTextInput.value = cfg.shortcut || '';
+    renderShortcutDisplay(cfg.shortcut || null);
+    setShortcutMode('record');
     maxItemsInput.value = cfg.maxItems || 50;
     autostartToggle.checked = autoEnabled;
     pendingTheme = cfg.theme || 'dark';
     updateThemeButtons(pendingTheme);
     settingsError.classList.add('hidden');
     settingsModal.classList.remove('hidden');
-    shortcutInput.focus();
   }).catch(e => console.error('get_config:', e));
 }
 
@@ -312,8 +491,7 @@ function closeSettings() {
 }
 
 async function saveSettings() {
-  const shortcutRaw = shortcutInput.value.trim();
-  const shortcut = shortcutRaw || null;
+  const shortcut = shortcutInput.value.trim() || null;
   const maxItems = parseInt(maxItemsInput.value, 10);
 
   if (isNaN(maxItems) || maxItems < 10) {
@@ -359,6 +537,7 @@ listen('open-settings', () => {
 });
 
 window.addEventListener('blur', () => {
+  if (isDragging) return;
   if (!settingsModal.classList.contains('hidden')) return;
   hideWindow();
 });

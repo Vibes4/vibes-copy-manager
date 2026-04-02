@@ -128,6 +128,46 @@ html.light {
   transition: opacity 100ms ease-in, transform 100ms ease-in;
 }
 
+/* ─── Drag region ────────────────────────────────────── */
+
+.drag-region {
+  cursor: grab;
+  -webkit-app-region: drag;
+}
+.drag-region button,
+.drag-region a,
+.drag-region input {
+  -webkit-app-region: no-drag;
+}
+
+/* ─── Shortcut recorder ─────────────────────────────── */
+
+.shortcut-recorder {
+  user-select: none;
+}
+.shortcut-recorder:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.shortcut-recorder.recording {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.shortcut-recorder.recording .shortcut-keys {
+  opacity: 0.5;
+}
+.shortcut-key {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 4px;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
 /* ─── Theme button states ────────────────────────────── */
 
 .theme-btn {
