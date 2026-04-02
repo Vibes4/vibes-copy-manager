@@ -103,15 +103,52 @@ main() {
     _base="https://github.com/${REPO}/releases/latest/download"
     _installed=0
 
-    # ── Install GUI (AppImage on Linux, binary on macOS) ──
+    # ── Install GUI (AppImage or deb on Linux, binary on macOS) ──
     case "$_os" in
         linux)
-            info "Installing GUI (AppImage)..."
-            if install_binary "vcm-gui" "${_base}/vcm-linux.AppImage"; then
-                _installed=1
+            printf "\n"
+            printf "  Select GUI package format:\n"
+            printf "    ${BOLD}1${NC}) AppImage  (portable, no root needed)\n"
+            printf "    ${BOLD}2${NC}) .deb      (system install, requires sudo)\n"
+            printf "\n"
+            printf "  Choice [1]: "
+            _choice="1"
+            if read _input </dev/tty 2>/dev/null; then
+                case "$_input" in
+                    2) _choice="2" ;;
+                    *) _choice="1" ;;
+                esac
+            fi
+
+            if [ "$_choice" = "2" ]; then
+                info "Installing GUI (.deb package)..."
+                _tmpfile="$(mktemp --suffix=.deb)"
+                if download "${_base}/vcm-linux.deb" "$_tmpfile" 2>/dev/null; then
+                    info "Running: sudo dpkg -i (may prompt for password)"
+                    if sudo dpkg -i "$_tmpfile" </dev/tty; then
+                        ok "Installed .deb package"
+                        _installed=1
+                    else
+                        warn ".deb install failed. Falling back to AppImage..."
+                        rm -f "$_tmpfile"
+                        if install_binary "vcm-gui" "${_base}/vcm-linux.AppImage"; then
+                            _installed=1
+                        fi
+                    fi
+                    rm -f "$_tmpfile"
+                else
+                    rm -f "$_tmpfile"
+                    warn "GUI .deb not available. Download manually from:"
+                    echo "      https://github.com/${REPO}/releases/latest"
+                fi
             else
-                warn "GUI binary not available. Download manually from:"
-                echo "      https://github.com/${REPO}/releases/latest"
+                info "Installing GUI (AppImage)..."
+                if install_binary "vcm-gui" "${_base}/vcm-linux.AppImage"; then
+                    _installed=1
+                else
+                    warn "GUI AppImage not available. Download manually from:"
+                    echo "      https://github.com/${REPO}/releases/latest"
+                fi
             fi
             ;;
         macos)
