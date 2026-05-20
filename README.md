@@ -144,20 +144,47 @@ Both the CLI and GUI share the same config and history files.
 
 ## Releasing
 
-Releases are built automatically via GitHub Actions when a tag is pushed:
+Pushing a **`v*`** tag on `master` triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds all platforms and publishes a GitHub Release (when pushed by the **Vibes4** account).
+
+### Quick release (recommended)
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+chmod +x release.sh
+./release.sh 1.0.2          # bumps version, commits, tags v1.0.2, pushes
+./release.sh --dry-run 1.0.2  # preview only
+./release.sh -y 1.0.2       # skip confirmation
 ```
 
-This builds for Linux, macOS, and Windows, and creates a GitHub Release with:
+### Manual steps (same result)
+
+1. **Prepare** — on `master`, clean tree, synced with `origin/master`:
+   ```bash
+   git checkout master
+   git pull origin master
+   git status   # must be clean
+   ```
+2. **Bump version** — set the same version in `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`, then:
+   ```bash
+   cd src-tauri && cargo check --features gui && cd ..
+   git add src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json
+   git commit -m "Release v1.0.2."
+   ```
+3. **Tag and push** (this starts CI):
+   ```bash
+   git tag -a v1.0.2 -m "v1.0.2"
+   git push origin master
+   git push origin v1.0.2
+   ```
+4. **Verify** — [Actions](https://github.com/Vibes4/vibes-copy-manager/actions) → Release workflow → [Releases](https://github.com/Vibes4/vibes-copy-manager/releases).
+
+### Release assets
 
 | OS | Files |
 |----|-------|
 | Linux | `vcm-linux.AppImage`, `vcm-linux.deb`, `vcm-linux` |
-| macOS | `vcm-macos.dmg`, `vcm-macos` |
+| macOS | `vcm-macos.dmg`, `vcm-macos`, `vcm-macos-cli` |
 | Windows | `vcm-windows.msi`, `vcm-windows.exe` |
+| All | `install.sh`, `uninstall.sh` |
 
 ---
 
