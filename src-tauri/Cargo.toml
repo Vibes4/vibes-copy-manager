@@ -1,6 +1,6 @@
 [package]
 name = "vibes-copy-manager"
-version = "0.3.0"
+version = "1.0.1"
 description = "Modern clipboard manager with CLI and GUI"
 authors = ["you"]
 edition = "2021"
