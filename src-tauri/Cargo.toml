@@ -29,6 +29,9 @@ gui = [
     "dep:tauri-build",
     "dep:png",
     "dep:base64",
+    "dep:ashpd",
+    "dep:tokio",
+    "dep:futures-util",
 ]
 
 [build-dependencies]
@@ -49,3 +52,17 @@ tauri-plugin-single-instance = { version = "2", optional = true }
 tauri-plugin-global-shortcut = { version = "2", optional = true }
 base64 = { version = "0.22", optional = true }
 png = { version = "0.17", optional = true }
+# XDG Global Shortcuts portal (Wayland); tauri global-shortcut uses X11 grabs only
+ashpd = { version = "0.13", default-features = false, features = [
+    "tokio",
+    "global_shortcuts",
+], optional = true }
+tokio = { version = "1", features = [
+    "rt",
+    "rt-multi-thread",
+    "sync",
+    "macros",
+], optional = true }
+futures-util = { version = "0.3", default-features = false, features = [
+    "std",
+], optional = true }

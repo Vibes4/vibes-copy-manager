@@ -97,11 +97,14 @@ vcm settings shortcut "Ctrl+Shift+V"
 
 | Platform | Shortcut | Notes |
 |----------|----------|-------|
-| Linux | `Super+V` or `Ctrl+Shift+V` | Set via OS keyboard settings or vcm |
+| Linux (X11) | `Super+V` or `Ctrl+Shift+V` | Set via vcm settings |
+| Linux (Wayland) | `Super+V` | **Set via OS keyboard settings** (see [Wayland section](#wayland)) |
 | macOS | `Cmd+Shift+V` | Set via vcm settings |
-| Windows | `Ctrl+Shift+V` | Set via vcm settings |
+| Windows | `Ctrl+Shift+V` | Set via vcm settings (avoid `Win+V` — conflicts with system) |
 
 Leave the shortcut empty to disable it — use the tray icon or `vcm` CLI instead.
+
+> **Linux Wayland users:** The most reliable approach is to configure your desktop environment to execute `vcm` as a custom shortcut. The app's built-in shortcut registration may not work on all Wayland compositors. See [Platform Notes → Wayland](#wayland) for step-by-step instructions.
 
 ---
 
@@ -165,8 +168,8 @@ This builds for Linux, macOS, and Windows, and creates a GitHub Release with:
 - [Rust](https://rustup.rs/) (stable)
 - [Node.js](https://nodejs.org/) (for Tauri CLI)
 - Tauri CLI: `cargo install tauri-cli --version "^2"`
-- **Linux**: `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libappindicator3-dev`, `xdotool`
-- **Linux (Wayland)**: `wtype`
+- **Linux (X11)**: `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libappindicator3-dev`, `xdotool`
+- **Linux (Wayland)**: all the above + `wtype` (for paste simulation)
 
 ### Run in development
 
@@ -213,6 +216,8 @@ src-tauri/src/              Rust backend
 ├── clipboard.rs            Clipboard watcher (polling + images)
 ├── window.rs               Window positioning, show/hide, paste
 ├── config.rs               Config read/write + shortcut parsing
+├── platform.rs             OS/display backend detection (X11/Wayland)
+├── portal_global_shortcut.rs  Wayland Global Shortcuts portal
 ├── persistence.rs          Tauri-specific history persistence
 └── autostart.rs            Cross-platform autostart management
 ```
@@ -233,18 +238,65 @@ The `gui` feature flag controls Tauri-dependent code. The CLI compiles with `--n
 ## Platform Notes
 
 ### Linux
-- **X11**: Uses `xdotool` for window focus and paste simulation
-- **Wayland**: Falls back to `wtype` for paste simulation
+
+#### X11
+- Global shortcuts work natively via Tauri's shortcut plugin
+- Uses `xdotool` for window focus and paste simulation
 - Autostart: `~/.config/autostart/vibes-copy-manager.desktop`
+
+#### Wayland
+
+Wayland restricts applications from capturing global keyboard shortcuts directly. VCM handles this with a layered approach:
+
+1. **XDG Global Shortcuts Portal** — VCM attempts to use the `org.freedesktop.portal.GlobalShortcuts` portal (supported on GNOME 44+, KDE Plasma 5.27+)
+2. **Fallback** — If the portal is unavailable, VCM logs a warning and continues without a global shortcut
+
+**Recommended Setup:** Configure your desktop environment to run `vcm` as a custom keyboard shortcut.
+
+##### Ubuntu GNOME (Wayland)
+
+1. Open **Settings → Keyboard → Custom Shortcuts**
+2. Click **+** to add a new shortcut
+3. Name: `Clipboard Manager`
+4. Command: `vcm`
+5. Shortcut: `Super+V` (or your preferred key)
+
+##### KDE Plasma (Wayland)
+
+1. Open **System Settings → Shortcuts → Custom Shortcuts**
+2. Click **Edit → New → Global Shortcut → Command/URL**
+3. Set trigger to `Super+V`
+4. Set action/command to `vcm`
+
+##### Hyprland
+
+Add to `~/.config/hypr/hyprland.conf`:
+
+```
+bind = SUPER, V, exec, vcm
+```
+
+##### Sway
+
+Add to `~/.config/sway/config`:
+
+```
+bindsym Mod4+v exec vcm
+```
+
+**How it works:** Running `vcm` when the app is already running will signal the existing instance to show its window (single-instance behavior). It will never spawn a duplicate.
 
 ### macOS
 - Uses `osascript` for paste simulation
 - Autostart: `~/Library/LaunchAgents/com.vibes.vibes-copy-manager.plist`
 - Requires Accessibility permission for auto-paste
+- Recommended shortcut: `Cmd+Shift+V`
 
 ### Windows
 - Clipboard write is sufficient — user pastes with Ctrl+V
 - Autostart: `.bat` in the Startup folder
+- Recommended shortcut: `Ctrl+Shift+V`
+- Avoid `Win+V` to prevent conflict with Windows built-in clipboard history
 
 ---
 

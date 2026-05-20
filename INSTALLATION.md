@@ -59,6 +59,8 @@ sudo apt install -y xdotool
 sudo apt install -y wtype
 ```
 
+**Global hotkey (Wayland):** the app uses the [Global Shortcuts](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.GlobalShortcuts.html) XDG desktop portal. Use a current `xdg-desktop-portal` and compositor (GNOME 46+, KDE Plasma 6, recent Sway, etc.); the first time you set a shortcut, the system may show a permission dialog. If the portal is unavailable, the app falls back to the X11 hotkey path (less reliable on pure Wayland).
+
 ### Building the GUI from Source
 
 ```bash

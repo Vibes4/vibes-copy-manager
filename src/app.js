@@ -466,12 +466,14 @@ function scrollToSelected() {
 // ─── Settings Modal ──────────────────────────────────────────────
 
 let pendingTheme = 'dark';
+const platformHintEl = document.getElementById('platform-shortcut-hint');
 
 function openSettings() {
   Promise.all([
     invoke('get_config'),
     invoke('get_autostart'),
-  ]).then(([cfg, autoEnabled]) => {
+    invoke('get_platform_info'),
+  ]).then(([cfg, autoEnabled, platform]) => {
     shortcutInput.value = cfg.shortcut || '';
     shortcutTextInput.value = cfg.shortcut || '';
     renderShortcutDisplay(cfg.shortcut || null);
@@ -481,6 +483,18 @@ function openSettings() {
     pendingTheme = cfg.theme || 'dark';
     updateThemeButtons(pendingTheme);
     settingsError.classList.add('hidden');
+
+    // Show platform-specific shortcut hint
+    if (platform && platform.os === 'linux' && platform.isWayland) {
+      platformHintEl.textContent = '⚠ Wayland: Recommended: configure Super+V in your desktop environment settings to execute `vcm`.';
+      platformHintEl.classList.remove('hidden');
+    } else if (platform && platform.os === 'linux') {
+      platformHintEl.textContent = 'Tip: You can also configure a custom shortcut in your desktop environment to run `vcm`.';
+      platformHintEl.classList.remove('hidden');
+    } else {
+      platformHintEl.classList.add('hidden');
+    }
+
     settingsModal.classList.remove('hidden');
   }).catch(e => console.error('get_config:', e));
 }
