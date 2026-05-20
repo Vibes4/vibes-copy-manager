@@ -52,7 +52,9 @@ tauri-plugin-single-instance = { version = "2", optional = true }
 tauri-plugin-global-shortcut = { version = "2", optional = true }
 base64 = { version = "0.22", optional = true }
 png = { version = "0.17", optional = true }
-# XDG Global Shortcuts portal (Wayland); tauri global-shortcut uses X11 grabs only
+
+# Linux-only deps (XDG Global Shortcuts portal for Wayland)
+[target.'cfg(target_os = "linux")'.dependencies]
 ashpd = { version = "0.13", default-features = false, features = [
     "tokio",
     "global_shortcuts",
