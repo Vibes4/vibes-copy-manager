@@ -188,6 +188,11 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Add install scripts
+        run: |
+          chmod +x install.sh uninstall.sh
+          cp install.sh uninstall.sh artifacts/
+
       - name: List artifacts
         run: ls -lhR artifacts/
 
@@ -204,3 +209,5 @@ jobs:
             artifacts/vcm-macos-cli
             artifacts/vcm-windows.msi
             artifacts/vcm-windows.exe
+            artifacts/install.sh
+            artifacts/uninstall.sh
